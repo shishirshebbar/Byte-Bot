@@ -1,0 +1,21 @@
+name: byte-bot
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bytebot
+      POSTGRES_PASSWORD: bytebot
+      POSTGRES_DB: bytebot
+    ports:
+      - "127.0.0.1:${BYTEBOT_DB_PORT:-55433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bytebot -d bytebot"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres-data:

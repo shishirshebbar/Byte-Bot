@@ -1,0 +1,44 @@
+# Local configuration; publish only the sanitized example.
+.env
+.env.*
+!.env.example
+
+# Installed dependencies, builds, and Python caches.
+.venv/
+venv/
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.egg-info/
+.coverage
+htmlcov/
+
+# Local OCR models and browser test artifacts
+.cache/
+playwright-report/
+test-results/
+
+# Local evidence, exported reports, database backups, and credentials.
+/uploads/
+/reports/
+/downloads/
+/backups/
+*.log
+*.pid
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql.gz
+*.pem
+*.key
+.credentials/
+
+# Editor and operating-system files.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

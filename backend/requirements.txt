@@ -1,0 +1,11 @@
+# Runtime dependencies (Python 3.12). Install from the repository root:
+# python -m pip install -r backend/requirements.txt
+# Direct dependencies are pinned; this is not a transitive dependency lockfile.
+fastapi==0.135.1
+uvicorn==0.41.0
+psycopg[binary,pool]==3.3.3
+langgraph==1.0.10
+google-genai==1.66.0
+Pillow==12.2.0
+python-multipart==0.0.22
+python-dotenv==1.2.1

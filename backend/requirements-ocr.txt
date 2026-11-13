@@ -1,0 +1,6 @@
+# Optional local OCR; install alongside runtime or development requirements.
+# See docs/setup.md#optional-local-ocr for CPU wheel and model preparation.
+# Install the pinned CPU wheels first on Linux; do not use a GPU package freeze.
+easyocr==1.7.2
+torch==2.6.0
+torchvision==0.21.0

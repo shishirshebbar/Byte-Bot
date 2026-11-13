@@ -1,0 +1,3 @@
+# Preserve the original reference document, including Markdown hard breaks
+# and its final blank line, without treating those as whitespace errors.
+docs/reference/byte_bot_prd.md whitespace=-blank-at-eol,-blank-at-eof
