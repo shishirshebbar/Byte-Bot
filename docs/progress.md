@@ -550,3 +550,12 @@ Branch `teammate-phase-0-1`. Plan: [teammate plan](teammate-plan.md).
 
 - Fetched `origin` before publishing. The remote feature branch contained eight newer commits, including Railway/CORS/API URL deployment changes. Rebased the presentation commit onto that branch, preserving the incoming changes.
 - Resolved the sole conflict in `docs/progress.md` by retaining both the remote history and the presentation entries. `npm --prefix frontend run build` passed after integration; existing React Router directive warnings are nonblocking. No further browser suites were run, following the user's request to limit testing.
+
+## 2026-11-14 - Railway same-origin session fix
+
+- Restored relative API calls and added a production frontend server that forwards `/api` requests, including cookies and request bodies, to `BYTEBOT_API_TARGET`. Updated Railway instructions to use `npm start`, `HOST=0.0.0.0`, and the backend origin as the proxy target. Report downloads and the support console use the same origin. Removed the earlier exception logging that could expose untrusted data.
+- `npm.cmd --prefix frontend install` — passed; 0 vulnerabilities reported.
+- `npm.cmd --prefix frontend run build` — passed with existing React Router directive warnings.
+- `node --test frontend\server.test.mjs` — passed: synthetic session cookie forwarding, owned and missing transaction responses, claim POST body, API errors, SPA routing and unavailable backend. Node reported an upstream `util._extend` deprecation warning.
+- `.\.venv\Scripts\python.exe -c "import ast, pathlib; ast.parse(pathlib.Path(r'backend\bytebot\errors.py').read_text(encoding='utf-8')); print('Python syntax OK')"` — passed.
+- **Pending:** deploy the changes and verify a fresh browser session, transaction details, claim check and report on Railway. The existing loopback API on port 8000 did not answer a health probe; it was not stopped or reconfigured. Backend database tests and live-provider calls were not run.

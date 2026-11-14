@@ -52,7 +52,7 @@ Open https://railway.app/dashboard
    ```
 4. **Click: Services → Create from GitHub** (2 services):
    - Backend: `shishirshebbar/Byte-Bot`, root `backend/`, Python 3.12, start `bash ./start.sh`, link PostgreSQL
-   - Frontend: `shishirshebbar/Byte-Bot`, root `frontend/`, Node 22, build `npm ci && npm run build`, start `npm run preview`
+   - Frontend: `shishirshebbar/Byte-Bot`, root `frontend/`, Node 22, build `npm ci && npm run build`, start `npm start`; set `HOST=0.0.0.0` and `BYTEBOT_API_TARGET` to the backend origin without `/api`. Remove `VITE_API_URL`.
 
 ### 3️⃣ Deploy (5–10 min, automatic)
 1. Click **Trigger Deploy** in Railway

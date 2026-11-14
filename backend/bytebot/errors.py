@@ -1,4 +1,3 @@
-import logging
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -6,9 +5,6 @@ from starlette.exceptions import HTTPException
 import psycopg
 from psycopg_pool import PoolTimeout
 from .ocr import EvidenceError
-
-logger = logging.getLogger(__name__)
-
 
 def error(status, code, message):
     return JSONResponse(status_code=status, content={"error": {"code": code, "message": message}})
@@ -36,5 +32,4 @@ def install_errors(app):
 
     @app.exception_handler(Exception)
     async def unexpected_error(request: Request, exc):
-        logger.error(f"Unexpected error in {request.method} {request.url.path}: {type(exc).__name__}: {exc}", exc_info=exc)
-        return error(500, "request_failed", "The request could not be completed.")
+        return error(500, "internal_error", "The request could not be completed.")

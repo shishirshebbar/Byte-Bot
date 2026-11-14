@@ -4,7 +4,7 @@ This document guides the five implementation phases. [The PRD](reference/byte_bo
 
 ## Services and screens
 
-React and TypeScript serve the transaction history at `/`, transaction details at `/transactions/:id`, the guided intake and evidence review at `/investigations/:id`, results at `/investigations/:id/results`, the report at `/investigations/:id/report`, and My Incidents at `/incidents`. Use relative API paths through the Vite proxy. Reloading a case or using browser navigation restores its persisted state. Screenshot preview is browser-local while the upload is open.
+React and TypeScript serve the transaction history at `/`, transaction details at `/transactions/:id`, the guided intake and evidence review at `/investigations/:id`, results at `/investigations/:id/results`, the report at `/investigations/:id/report`, and My Incidents at `/incidents`. Use relative API paths through the Vite development proxy or the production frontend's `/api` reverse proxy. The production proxy forwards cookies and API responses to `BYTEBOT_API_TARGET`, retaining same-origin browser sessions. Reloading a case or using browser navigation restores its persisted state. Screenshot preview is browser-local while the upload is open.
 
 FastAPI handles the API and one bounded analysis workflow per investigation. Use PostgreSQL for durable data and a local CPU EasyOCR reader for screenshots. Run Gemini server-side for extraction. Keep settings, route handlers, storage, prompts, risk rules, and fixtures in separate modules.
 

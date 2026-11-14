@@ -52,11 +52,12 @@ GEMINI_MODEL=                    # Leave blank
    - **Name:** `bytebot-frontend`
    - **Root Directory:** `frontend/`
    - **Build Command:** `npm ci && npm run build`
-   - **Start Command:** `npm run preview`
+   - **Start Command:** `npm start`
    - **Runtime:** Node.js 22
-   - **Port:** 4174
-   - **Environment Variable:** `VITE_API_URL=https://{backend-url}.railway.app/api`
-     (Replace `{backend-url}` with your Railway backend domain)
+   - **Port:** Railway's `PORT` (the server defaults to 4174 locally)
+   - **Frontend variables:** `HOST=0.0.0.0` and
+     `BYTEBOT_API_TARGET=https://{backend-url}.railway.app` (the backend origin,
+     without `/api`). Remove `VITE_API_URL`; browser requests use the same-origin proxy.
 
 ### Step 4: Deploy
 
@@ -64,7 +65,7 @@ GEMINI_MODEL=                    # Leave blank
 2. Watch logs in **Deployments** tab
 3. Wait for:
    - Backend: `✓ Deployed` (running on 8000)
-   - Frontend: `✓ Deployed` (running on 4174)
+   - Frontend: `✓ Deployed` (listening on Railway's `PORT`)
 
 ### Step 5: Verify
 
@@ -77,7 +78,7 @@ GEMINI_MODEL=                    # Leave blank
    # Backend health check
    curl https://bytebot-api.railway.app/api/v1/health
 
-   # Should return: {"status":"ok","database":"connected"}
+   # Should return: {"status":"ready","database":"available"}
    ```
 
 3. Open in browser:
@@ -118,7 +119,7 @@ GEMINI_MODEL=                    # Leave blank
 → Ensure PostgreSQL plugin is linked to backend service
 
 ### "Frontend can't reach backend API"
-→ Update `VITE_API_URL` in frontend environment to your Railway backend URL
+→ Verify frontend `BYTEBOT_API_TARGET` is the backend origin without `/api`, and its start command is `npm start`. Check that requests under `/api/v1` on the frontend domain return JSON, not the HTML application shell.
 
 ### "Migrations failed"
 → Check Railway logs in **Deployments** → **View Logs**

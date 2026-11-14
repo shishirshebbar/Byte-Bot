@@ -8,9 +8,7 @@ export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const apiBase = import.meta.env.VITE_API_URL || '/api/v1';
-  const url = apiBase.endsWith('/v1') ? `${apiBase}${path}` : `${apiBase}/v1${path}`;
-  const response = await fetch(url, { ...init, credentials: 'same-origin' });
+  const response = await fetch(`/api/v1${path}`, { ...init, credentials: 'same-origin' });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new ApiError(response.status, body?.error?.message || 'The request could not be completed. Please try again.');

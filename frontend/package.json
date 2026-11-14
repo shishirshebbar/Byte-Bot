@@ -5,10 +5,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.2.0",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

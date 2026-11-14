@@ -54,13 +54,14 @@ In Railway Dashboard → **Services**
 - Root Directory: `frontend/`
 - Runtime: Node.js 22 (auto-detected)
 - Build Command: `npm ci && npm run build`
-- Start Command: `npm run preview`
-- Port: 4174
-- Environment Variable:
+- Start Command: `npm start`
+- Port: Railway's `PORT` (4174 locally)
+- Environment Variables:
   ```
-  VITE_API_URL=https://bytebot-api.railway.app/api
+  HOST=0.0.0.0
+  BYTEBOT_API_TARGET=https://bytebot-api.railway.app
   ```
-  (Replace `bytebot-api` with your actual backend service name)
+  (Replace the backend origin with your actual backend URL, without `/api`; remove `VITE_API_URL`.)
 
 ### Step 4: Deploy
 1. Click: **Trigger Deploy** (or auto-triggers on GitHub push)
@@ -73,7 +74,7 @@ In Railway Dashboard → **Services**
    ```bash
    curl https://your-backend-service.railway.app/api/v1/health
    ```
-   Should return: `{"status":"ok","database":"connected"}`
+   Should return: `{"status":"ready","database":"available"}`
 
 3. Open frontend in browser:
    - Main app: `https://your-frontend-service.railway.app/`
@@ -101,7 +102,7 @@ In Railway Dashboard → **Services**
 | Issue | Fix |
 |-------|-----|
 | `DATABASE_URL not found` | Make sure PostgreSQL plugin is linked to backend service |
-| `Frontend shows 404` | Check `VITE_API_URL` points to correct Railway backend URL |
+| `Frontend shows 404` | Verify `npm start`, `BYTEBOT_API_TARGET`, and same-origin `/api` requests; reload transaction history to create a fresh session. |
 | `Backend fails to start` | Check Railway logs: `railway logs --service bytebot-api` |
 | `502 Bad Gateway` | Backend crashed; check logs and environment variables |
 | `Migrations fail` | Ensure `DATABASE_URL` is set and PostgreSQL is ready |
