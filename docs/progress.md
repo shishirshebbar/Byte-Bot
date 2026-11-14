@@ -526,3 +526,27 @@ Branch `teammate-phase-0-1`. Plan: [teammate plan](teammate-plan.md).
   - `npm --prefix frontend run build` passed (with existing React Router `use client` bundler warnings).
   - Python standard-library syntax checks passed for `backend/bytebot/main.py` and `backend/bytebot/settings.py`.
   - The CORS runtime smoke check could not run because FastAPI is not installed in this workspace. The backend pytest suite was not run because database URLs are unset and the suite recreates the test database schema.
+
+## 2026-11-14 - Simplified customer phone and judge backend view
+
+- Implemented the approved simplification. The phone starts at a Paytm-style home, with working Balance & History, payment receipts, Byte Bot cases and payment checking. Scan/transfer shortcuts show a prototype notice. Removed demo controls from phone navigation and stopped flagging the first successful payment as unexpected without evidence.
+- Presentation intake uses one question at a time, explicit saving and a compact attachment menu. Saved evidence previews expand for editing; OCR/voice review gates, unsaved-change protection and revision checks remain. Customer results show one concern summary, guidance and consent controls; detailed sources and limitations expand separately.
+- Replaced Story Board tabs and animated replay with the backend decision timeline, recorded timestamps, key findings, policy verdicts, simulated receipts, escalation and report readiness. Demo setup is collapsed by default. Technical details and the fraud graph expand on demand. Human decisions update both panes through case polling. Updated README and demo walkthrough.
+- Preserved the existing header simplification. At the user's follow-up request, removed the FOR HACKATHON JUDGES and Live state labels. Backend activity remains the panel title.
+- Checks completed: `npm --prefix frontend run build` passed; existing React Router directive warnings are nonblocking. With `PYTHONIOENCODING=utf-8` and `BYTEBOT_WEB_URL=http://127.0.0.1:5174`, `.\.venv\Scripts\python.exe backend/tests/browser_smoke.py`, `browser_phase02.py`, `browser_phase03.py`, `browser_phase04.py`, `browser_presentation.py`, and `browser_teammate.py` passed. Phase 03 covered all A-O fixtures. Presentation verified home/history, guided saves, recorded trace, consent, report download/retry, status, ownership, evidence links/invalidation, reset recovery, claim checks, keyboard use and 1440/1280/390/320 layouts; result plus report ready in 1.45 seconds. Teammate also passed on the 4174 preview (1.48-second Scenario L), including console decisions updating the phone without reload.
+- Visually inspected desktop home/review/result and 320 px home screenshots in `.cache/simple-presentation/`. No horizontal overflow in the passing layout checks.
+- Pending verification: the later expanded presentation run adding an attachment-menu/blank-image check was interrupted; its completion is not claimed. Phase 05 was not rerun. The user requested limiting further testing, so no additional browser suites, backend pytest or live provider checks were run. Backend and database contracts are unchanged; standard Phase 02 already passed real OCR and correction/manual fallback.
+- Environment: started only the absent Byte Bot API on loopback 8000 in fixture mode for verification. Existing frontend/preview remain on 5174/4174. Existing database configuration remains on 55434 as recorded in the prior entry. No service on 5000, 5173, 3306 or 55432 was changed.
+
+
+## 2026-11-14 - Informative backend task highlights
+
+- Added a concise Current task panel explaining what the backend is checking or waiting for, derived from the actual run stage, evidence review, follow-ups, consent, human approval, action failures and report readiness.
+- Highlighted the active timeline row and key planning/policy/handoff labels with plain background fills, keeping normal text colors. Pending approvals and failed simulated actions use the same background emphasis; action states no longer change font color. Added useful descriptions to the timeline before a run starts.
+- `npm --prefix frontend run build` passed TypeScript and production bundling. Existing React Router directive warnings remain nonblocking. `git diff --check` passed. Kept verification to these quick checks as requested; no browser suites or provider calls were run for this follow-up.
+
+
+## 2026-11-14 - GitHub synchronization for the simplified presentation
+
+- Fetched `origin` before publishing. The remote feature branch contained eight newer commits, including Railway/CORS/API URL deployment changes. Rebased the presentation commit onto that branch, preserving the incoming changes.
+- Resolved the sole conflict in `docs/progress.md` by retaining both the remote history and the presentation entries. `npm --prefix frontend run build` passed after integration; existing React Router directive warnings are nonblocking. No further browser suites were run, following the user's request to limit testing.

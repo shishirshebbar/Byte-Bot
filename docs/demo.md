@@ -7,52 +7,48 @@ Complete [setup](setup.md) and open **http://127.0.0.1:5174** (or the production
 
 Keep three tabs ready: the presentation (`/`), the human console (`/console`), and outcomes (`/metrics`).
 
-## The stage
+## Customer phone and judge view
 
-The presentation is one 1440×900 frame with no page scroll (press **F** for full screen when sharing a browser window). The light phone on the left is the customer; the dark **Story Board** on the right is Byte Bot thinking.
+The presentation fits a desktop screen at 1440 by 900 or 1280 by 720. Press **F** outside editable controls for full screen. Narrow screens stack the phone above the judge view; **Judge view** in the header jumps to the backend panel.
 
-- **Before a case:** the stage asks the hook question over the six questions.
-- **After analysis:** the agents light up, the six questions fill in one by one with ✓/⚠/✕, then the **verdict** arrives with the risk gauge, followed by a **proof panel** for the case:
-  - Case 1: a scan of the customer's own history for the claimed credit.
-  - Case 2: a "message X-ray" that highlights the pressure phrases.
-  - Case 3: which way the money would move ("₹5,000 leaves your account → rahul.mehta.demo@upi").
-  - Case 4: the fraud network around the sender.
-- **Below the board:** the supervisor decisions and the actions on the simulated systems, with their consent states.
-- **Replay** (or **Space**) re-runs the reveal. With reduced motion, everything appears at once. The stage only re-displays stored results; Python rules still decide every category.
-- **Presenter dock** (bottom): the four worlds (keys **1–4**), the scenario selector with **Load / reopen scenario**, and **Reset demo** (**R**). The top bar shows the active world and whether extraction is live Sarvam or fixture.
+- **Customer phone:** start at the Paytm-style home. **Balance & History** opens searchable payment history, and each payment opens a receipt with **Ask Byte Bot**. Scan and transfer shortcuts show a prototype notice. They never move money.
+- **Guided intake:** review saved answers or answer one question at a time. **Add evidence** offers messages, call summaries, screenshots and voice notes. Uploaded screenshot/voice text must be reviewed and confirmed. **Analyze & prepare report** uses the saved revision.
+- **Customer result:** one concern summary, safe guidance, consent controls, report download and customer-entered case status. Supporting sources and limitations are under **Why this result?**
+- **Judge view:** the actual backend routing and timestamps, Python policy verdicts, simulated action states and receipts, human escalation and report readiness. Expand **Findings, evidence & technical details** for the score, six-question story and fraud graph. There is no staged replay.
+- **Demo setup:** expand the disclosure at the bottom of the judge panel for the scenario selector, manual-evidence mode, load/reopen and confirmed reset. Provider mode and synthetic provenance are shown in the judge view. Metrics, the human console and the standard workspace are under **More**.
 
-## Three worlds: the opening hook
+## Four cases: the opening hook
 
-Ask the judges the question on the empty stage: "You've received ₹5,000. Rahul says it was a mistake. What would you do?" Then **Reset demo** (**R**) and use the **Three worlds** buttons (keys **1–4**):
+Ask: "Someone says they sent you money by mistake. What would you check before sending it back?" Open **Demo setup**, reset the demo, and select a case:
 
-1. **No credit arrived.** Opens "Did the money really arrive?" with Rahul's message pre-filled. **Check my payments** shows **Scam warning: the claimed payment can't be verified.**
-2. **Real credit, suspicious request** (Scenario M). Ask Byte Bot, then analyze: **Caution: the payment is genuine, but the repayment request can't be verified.**
-3. **Real credit, QR "refund"** (Scenario N). The synthetic refund QR is decoded locally: it would pay ₹5,000 *from* the customer to Rahul. **Dangerous payment action.**
-4. **Same UPI ID, suspicious network** (Scenario O, optional). A polite same-ID request, but the fraud graph links the sender to three reported incidents and two repayment recipients. **Suspicious network: let your bank handle the reversal.**
+1. **No credit arrived - Fake payment claim.** Opens the payment checker with Rahul's message. **Check my payments** checks whether the credit exists in the customer's history.
+2. **Scenario M: real credit, suspicious request.** Open Byte Bot and analyze. The original credit exists, but the repayment request needs verification.
+3. **Scenario N: real credit, QR refund.** The QR describes an outgoing payment. The result warns against the dangerous payment action.
+4. **Scenario O: same UPI ID, suspicious network.** A polite request still has links to reported incidents. Expand the judge's technical details for the fraud graph and its limitations.
 
-Rerun world 1 after world 2 to show that the same message is now verified ("The money really arrived"). Each world ends with the six questions, the verdict, and the case's proof panel on the stage; press **Space** to replay the reveal while you explain it.
+Return to the claim checker after loading M to show how the same claim changes when a matching credit exists. The judge panel observes the current case; unrelated case details clear when the customer returns home or opens another payment.
 
 ## Four-minute AI-teammate pitch
 
 **Problem framing (say before the timer).** Paytm support sees unexpected-credit scams daily: "I sent ₹5,000 by mistake, send it back." Today an assistant can only answer questions. Byte Bot is a teammate that resolves the case. It understands the context, decides, acts on the account with consent, and hands off to a person only when policy says so.
 
-1. **0:00–0:40 Proactive and Indic.** Reset the demo. Point to the **Unexpected credit** alert on the history screen.
+1. **0:00–0:40 Proactive and Indic.** Expand **Demo setup**, reset, and show the Paytm-style home and **Balance & History**.
    - Load **Scenario L** (Hinglish: "turant wapas karo… bank ko mat batana warna police bulaunga") and tap **Ask Byte Bot**.
    - Live alternative: on Scenario D with manual evidence, choose **Record voice note** and speak Hindi. Sarvam transcribes and translates it, and the customer confirms the transcript.
 2. **0:40–1:30 Decides.** Choose **Analyze & prepare report**.
-   - On the right, open **Workflow → Supervisor decisions**: one main agent routes four specialist agents (Transaction Context, Message Analysis, Risk Investigation, Incident Resolution), then checks missing details, plans steps, and runs the policy check.
-   - In the phone: **High concern** with a **risk score gauge**, and ✕/⚠ factors with sources. "Python rules decide the category. The score explains it. The language model only extracts quotes it can prove."
-3. **1:30–2:15 Acts with consent.** Approve **Place a dispute hold**: a `SIM-HOLD-…` receipt appears. Approve **Block the requesting UPI ID** and **Open a dispute ticket**.
+   - On the right, follow **Agent timeline**: one main agent routes four specialist agents (Transaction Context, Message Analysis, Risk Investigation, Incident Resolution), then checks missing details, plans steps, and runs the policy check.
+   - In the phone: **High concern** and the safest next action. In the judge panel, expand technical details for the score and sourced findings. "Python rules decide the category. The score explains it. The language model only extracts quotes it can prove."
+3. **1:30–2:15 Acts with consent.** Approve **Place a dispute hold**: the phone shows Done, and the judge panel shows its `SIM-HOLD-` receipt. Approve **Block the requesting UPI ID** and **Open a dispute ticket**.
    - "Every step comes from a fixed playbook, passes a versioned policy, and runs once, verified, with undo."
    - Tap **Listen** in Hindi for spoken guidance (live Sarvam).
 4. **2:15–3:15 Escalates only when needed.** Load **Scenario F** (money already sent) and analyze. The phone says **Handed to a person · urgent priority**.
    - Switch to `/console`. Show the queue, the handoff brief, the insights, and **Ledger verified**.
-   - Approve **Prepare a 1930 complaint draft**, then **Resolve**. Back in the phone, the customer sees the person's receipt.
+   - Approve **Prepare a 1930 complaint draft**, then **Resolve**. Back in the phone, the customer sees the approved step as Done; the judge panel shows the receipt. Both update automatically while the escalation is active.
 5. **3:15–4:00 Measurable outcomes.** Open `/metrics`.
    - Across 12 end-to-end scenarios: **75% handled without a person**, **100% escalation precision and recall**, **100% category accuracy**, **0 policy violations**, prompt injection **contained**, a median of **2 customer taps**, and **0.5-second** live Sarvam analysis.
    - "It doesn't just respond; it gets the job done, safely."
 
-**Fallback.** If live services fail, play `.cache/phase9/teammate-demo.webm` (53 seconds, the customer view, recorded in fixture mode) and `.cache/phase9/teammate-console.webm` (18 seconds, the console view). Regenerate them with `browser_teammate.py --record`. Narrate the same landmarks. The older `.cache/paytm-upgrade/scenario-b-fallback.webm` covers the original report flow.
+**Fallback.** Existing recordings reflect earlier UI versions. Regenerate with the current scripts before presenting. If live services fail, play `.cache/phase9/teammate-demo.webm` (53 seconds, the customer view, recorded in fixture mode) and `.cache/phase9/teammate-console.webm` (18 seconds, the console view). Regenerate them with `browser_teammate.py --record`. Narrate the same landmarks. The older `.cache/paytm-upgrade/scenario-b-fallback.webm` covers the original report flow.
 
 ### Judge Q&A
 
@@ -103,17 +99,17 @@ PowerShell:
 .\.venv\Scripts\python.exe backend/tests/synthetic_images.py --scenario B --output .cache/phase05/scenario-b.png
 ```
 
-1. Reset from history. Select **B. Same-ID repayment pressure**, check **Enter evidence manually**, and load.
+1. Open **Demo setup** and reset. Select **B. Same-ID repayment pressure**, check **Enter evidence manually**, and load.
 2. Choose **Ask Byte Bot** and review the attached transaction facts and saved answers.
-3. Upload the synthetic PNG, review/correct its OCR text, and confirm it. For exact fixture matching, correct line breaks and recognition errors to: `Please return INR 5000 to aarav.demo@upi. I will call the police. Do not contact your bank.`
+3. Choose **Add evidence**, then **Screenshot**. Upload the synthetic PNG, review/correct its OCR text, and confirm it. For exact fixture matching, correct line breaks and recognition errors to: `Please return INR 5000 to aarav.demo@upi. I will call the police. Do not contact your bank.`
 4. Analyze and show **High concern**, with threat/bank-avoidance findings and the same-ID limitation. Findings are signals requiring verification, not proof of fraud.
 5. Download the report prepared by the phone. In the standard workspace, use the separate **Generate / view report** action. Save **Bank Contacted** as a user-entered status and reopen the report through **My Incidents**.
 
-This is the four-minute presentation sequence. Automated historical rehearsal times exclude human narration and measure fixtures, not live Gemini. See [progress](progress.md) for the recorded environment and timings.
+This is the alternate screenshot sequence. Automated historical rehearsal times exclude human narration and measure fixtures, not live Gemini. See [progress](progress.md) for the recorded environment and timings.
 
 ## Reset
 
-**Reset demo** on history asks for confirmation, then clears only the current session's cases, evidence, analysis, reports, and audits and restores eight synthetic transactions. It keeps the cookie and creates new resource IDs. Other sessions remain intact; old case/report URLs become unavailable. Pending OCR/provider work cannot repopulate deleted data. Previously downloaded reports remain on the user's device.
+**Reset demo** in the judge panel's **Demo setup** (or workspace history) asks for confirmation, then clears only the current session's cases, evidence, analysis, reports, and audits and restores eight synthetic transactions. It keeps the cookie and creates new resource IDs. Other sessions remain intact; old case/report URLs become unavailable. Pending OCR/provider work cannot repopulate deleted data. Previously downloaded reports remain on the user's device.
 
 For API use, create a separate cookie jar. This resets that API session, not an existing browser session:
 

@@ -92,23 +92,15 @@ export function DemoControls({ ready, onReset, onLoad, onBusy, sessionRetry, onM
     return <section className="demo-controls dock" aria-label="Demo scenarios">
       <h2 className="sr-only">Presenter controls</h2>
       {!catalog ? <div className="dock-loading">{!error && <p role="status">Loading scenarios…</p>}{error && <button onClick={() => setAttempt(v => v + 1)}>Retry scenarios</button>}</div> : <>
-        {catalog.scenarios.some(item => item.id === 'N') && <fieldset className="three-worlds" disabled={!ready || !!busy}>
-          <legend>Three worlds <span>Rahul says he sent ₹5,000 by mistake</span></legend>
-          <div className="world-buttons">
-            {WORLDS.map((item, index) => <button key={item.label} type="button" className="world" aria-label={item.label}
-              data-shortcut={String(index + 1)} onClick={() => world(index)} title={`${item.hint} (key ${index + 1})`}>
-              <kbd aria-hidden="true">{index + 1}</kbd><span aria-hidden="true"><b>{item.short}</b><small>{item.hint}</small></span>
-            </button>)}
-          </div>
-        </fieldset>}
         <fieldset className="dock-row" disabled={!ready || !!busy}>
-          <label className="field dock-scenario" title={scenario?.description}>Scenario<select aria-label="Scenario" value={selected} onChange={e => setSelected(e.target.value)}>{catalog.scenarios.map(item => <option key={item.id} value={item.id}>{item.id}. {item.title}</option>)}</select></label>
-          <button type="button" className="dock-load" onClick={() => void load()}>Load / reopen scenario</button>
+          <label className="field dock-scenario" title={scenario?.description}>Scenario<select aria-label="Scenario" value={selected} onChange={e => setSelected(e.target.value)}><option value="claim">No credit arrived - Fake payment claim</option>{catalog.scenarios.map(item => <option key={item.id} value={item.id}>{item.id}. {item.title}</option>)}</select></label>
+          <button type="button" className="dock-load" onClick={() => selected === 'claim' ? world(0) : void load()}>Load / reopen scenario</button>
           {scenario?.evidence_text && <label className="choice"><input type="checkbox" checked={manual} onChange={e => setManual(e.target.checked)} /> Enter evidence manually (paste or upload a screenshot)</label>}
-          <button type="button" className="secondary dock-reset" data-shortcut="r" title={`${loadHelp} (key R)`} onClick={() => void reset()}><RotateCcw size={14} aria-hidden="true" />Reset demo</button>
-          <span className="dock-keys" aria-hidden="true" title={`${modeText} Keys: 1-4 worlds, Space replay, R reset, F full screen.`}><kbd>1–4</kbd><kbd>Space</kbd><kbd>R</kbd><kbd>F</kbd></span>
+          <button type="button" className="secondary dock-reset" title={loadHelp} onClick={() => void reset()}><RotateCcw size={14} aria-hidden="true" />Reset demo</button>
+
         </fieldset>
       </>}
+      <p className="dock-mode">{modeText}</p>
       {feedback}
     </section>;
   }
@@ -123,7 +115,7 @@ export function DemoControls({ ready, onReset, onLoad, onBusy, sessionRetry, onM
           <p>{scenario?.description}</p>
           {scenario?.evidence_text && <label className="choice"><input type="checkbox" checked={manual} onChange={e => setManual(e.target.checked)} /> Enter evidence manually (paste or upload a screenshot)</label>}
           <p className="field-help">{loadHelp}</p>
-          <div className="actions"><button onClick={() => void load()}>Load / reopen scenario</button><button className="secondary" onClick={() => void reset()}>Reset demo</button></div>
+          <div className="actions"><button onClick={() => selected === 'claim' ? world(0) : void load()}>Load / reopen scenario</button><button className="secondary" onClick={() => void reset()}>Reset demo</button></div>
         </fieldset>
       </>}
       {feedback}
