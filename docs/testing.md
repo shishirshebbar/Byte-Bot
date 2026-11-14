@@ -103,6 +103,19 @@ With both local Gemini settings configured:
 
 The check submits only an in-memory synthetic message and saves no evidence/provider response. It prints model, status, extracted kinds, and duration. Missing key/model returns **PENDING** with exit code **2** and makes no provider request. Record a configured live outcome separately; fixture timings do not measure Gemini performance.
 
+## AI-teammate checks
+
+Run with the API in fixture mode unless noted:
+
+```powershell
+.\.venv\Scripts\python.exe backend/tests/eval_teammate.py            # 12 scenarios end to end (guarded test DB; not alongside pytest)
+.\.venv\Scripts\python.exe backend/tests/eval_teammate.py --sarvam   # same, live Sarvam extraction on synthetic text
+$env:BYTEBOT_WEB_URL = 'http://127.0.0.1:4174'; .\.venv\Scripts\python.exe backend/tests/browser_teammate.py  # add --record for the fallback video
+.\.venv\Scripts\python.exe backend/tests/sarvam_smoke.py --live      # optional; synthetic content only; exit 2 without a key
+```
+
+The evaluation exits non-zero on any policy violation. `browser_teammate.py` covers the alert, the Hinglish decision with gauge and trace, consent receipts, follow-up pause and resume, escalation with console approval and ledger, the customer receipt, and metrics. It makes no live provider calls.
+
 ## Recording results
 
 Update [progress](progress.md) with exact commands, environment/provider mode, passed cases, timing, and pending verification. Keep the [acceptance matrix](acceptance.md) aligned with current tests. Do not label historical browser/OCR runs as newly executed. A phase is complete only after its documented exit criteria pass.

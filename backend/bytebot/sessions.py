@@ -2,7 +2,7 @@ import hashlib
 import secrets
 from uuid import uuid4
 from fastapi import HTTPException
-from .seeds import FIELDS
+from .seeds import FIELDS, DEFAULT_KEYS
 
 COOKIE = "bytebot_session"
 
@@ -33,7 +33,8 @@ def get_owner(conn, token):
     owner = find_owner(conn, token)
     if owner is not None:
         return owner, None
-    templates = conn.execute("SELECT template_key FROM transaction_templates ORDER BY template_key").fetchall()
+    templates = conn.execute("SELECT template_key FROM transaction_templates WHERE template_key=ANY(%s) ORDER BY template_key",
+                             (DEFAULT_KEYS,)).fetchall()
     if not templates:
         raise HTTPException(503)
     owner = uuid4()

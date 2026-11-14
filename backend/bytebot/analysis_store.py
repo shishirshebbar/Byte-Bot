@@ -6,6 +6,7 @@ from .investigation_store import owned_case
 from .ocr import EvidenceError
 from .audit import record
 from . import reports
+from . import agent_store
 
 
 class LostLease(Exception):
@@ -24,7 +25,9 @@ def status(conn, case):
     return {'run_id': row['id'], 'input_revision': row['input_revision'], 'state': row['state'],
             'stage': row['stage'], 'error_code': row['error_code'], 'notices': extraction.get('notices', []),
             'result': result['data'] if result and row['state'] == 'complete' else None,
-            'prepare_report': row['prepare_report'], 'report_id': report['id'] if report else None}
+            'prepare_report': row['prepare_report'], 'report_id': report['id'] if report else None,
+            'agent': agent_store.agent_status(conn, row, row['state'] == 'complete'),
+            'duration_seconds': round(sum(float(v) for v in row['stage_durations'].values() if v is not None), 2) if row['state'] == 'complete' else None}
 
 
 def prepare_approved_report(conn, case):
@@ -54,6 +57,7 @@ def enqueue(conn, owner, case_id, revision, mode, prepare_report):
                      (mode, row['id']))
         conn.execute('DELETE FROM extracted_signals WHERE run_id=%s', (row['id'],))
         conn.execute('DELETE FROM risk_assessments WHERE run_id=%s', (row['id'],))
+        agent_store.clear_run(conn, row['id'])
     if row and prepare_report and not row['prepare_report']:
         conn.execute('UPDATE analysis_runs SET prepare_report=true WHERE id=%s', (row['id'],))
     current = status(conn, case)
@@ -129,9 +133,23 @@ def save_stage(pool, run, stage, output=None):
                                  (uuid4(), run['id'], item['evidence_id'], Jsonb(item)))
 
 
-def publish(pool, run, result):
+def record_trace(pool, run, seq, node, reason):
+    """Store one supervisor decision while the run is visibly in progress."""
+    with pool.connection() as conn:
+        fenced(conn, run)
+        conn.execute('INSERT INTO agent_trace (run_id,seq,node,reason) VALUES (%s,%s,%s,%s) '
+                     'ON CONFLICT (run_id,seq) DO UPDATE SET node=excluded.node,reason=excluded.reason',
+                     (run['id'], seq, node, reason))
+
+
+def publish(pool, run, result, agent=None, systems=None):
     with pool.connection() as conn:
         case = fenced(conn, run)
+        if agent is not None:
+            agent_store.persist(conn, case, run, agent)
+            if systems is not None:
+                from .actions import execute_approved
+                execute_approved(conn, systems, case, run['id'])
         conn.execute('INSERT INTO risk_assessments (run_id,data) VALUES (%s,%s) ON CONFLICT (run_id) DO UPDATE SET data=excluded.data',
                      (run['id'], Jsonb(result)))
         completed = conn.execute("UPDATE analysis_runs SET state='complete',stage='complete',lease_token=NULL,"

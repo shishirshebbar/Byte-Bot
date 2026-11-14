@@ -12,11 +12,11 @@ VPA = re.compile(r'(?<![\w.])[\w.+-]{2,}@[a-zA-Z][a-zA-Z0-9_-]{1,}(?!\w)')
 PHONE = re.compile(r'(?<!\w)\+?\d[\d -]{8,}\d(?!\w)')
 EMAIL = re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+')
 PATTERNS = {
-    'repayment': re.compile(r'\b(?:return|repay|send (?:it|the money|the amount) back|refund)\b', re.I),
-    'urgency': re.compile(r'\b(?:immediately|urgent|right now|within \d+ minutes|hurry)\b', re.I),
-    'threat': re.compile(r'\b(?:I will (?:(?:call|contact) (?:the )?police|file a police complaint|block your account|expose you|take legal action)|threaten(?:ed|ing)?|you will be arrested)\b', re.I),
-    'bank_avoidance': re.compile(r"\b(?:do not|don't|never)\s+(?:contact|call|tell)\s+(?:your |the )?bank\b", re.I),
-    'secrecy': re.compile(r"\b(?:keep (?:it|this) secret|do not tell|don't tell)\b", re.I),
+    'repayment': re.compile(r'\b(?:return|repay|(?:send|bring|give|pay) (?:it|the money|the amount|that) back|refund|wapas (?:karo|kar do|bhejo|bhej do|kijiye)|lauta (?:do|dijiye)|lautao)\b', re.I),
+    'urgency': re.compile(r'\b(?:immediately|urgent|right now|within \d+ minutes|hurry|turant|abhi ke abhi|jaldi karo|fauran)\b', re.I),
+    'threat': re.compile(r'\b(?:I will (?:(?:call|contact) (?:the )?police|file a police complaint|block your account|expose you|take legal action)|threaten(?:ed|ing)?|you will be arrested|(?:warna )?police (?:ko )?bula(?:unga|ungi|enge)|police complaint kar(?:unga|ungi|enge)|case kar d(?:unga|ungi|enge)|jail bhej d(?:unga|ungi|enge))\b', re.I),
+    'bank_avoidance': re.compile(r"\b(?:(?:do not|don't|never)\s+(?:contact|call|tell)\s+(?:your |the )?bank|bank (?:ko|se) (?:mat|na) (?:batana|batao|bolna|bolo|call karna|contact karna))\b", re.I),
+    'secrecy': re.compile(r"\b(?:keep (?:it|this) secret|do not tell|don't tell|kisi ko mat (?:batana|batao))\b", re.I),
 }
 
 

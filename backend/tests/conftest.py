@@ -1,3 +1,10 @@
+import os
+# Tests never call live providers, whatever the developer's local .env contains.
+# load_dotenv does not override variables that are already set.
+os.environ['BYTEBOT_EXTRACTION_MODE'] = 'gemini'
+os.environ['GEMINI_API_KEY'] = ''
+os.environ['GEMINI_MODEL'] = ''
+os.environ['SARVAM_API_KEY'] = ''
 import pytest
 import psycopg
 from psycopg.conninfo import conninfo_to_dict

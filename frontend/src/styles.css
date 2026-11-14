@@ -26,3 +26,6 @@ header nav a { font-weight: 700; font-size: .9rem; }
   header nav a { font-size: .8rem; }
   .case-status .field { min-width: 0; width: 100%; flex-basis: 100%; }
 }
+
+/* Teammate design tokens (Phase 0). Phase 4 screens consume these. */
+:root{--bb-primary:#0a5cff;--bb-primary-soft:#e8f0ff;--bb-navy:#101e39;--bb-ink:#182b3c;--bb-muted:#617283;--bb-surface:#ffffff;--bb-canvas:#f4f7fb;--bb-line:#e3e9f0;--bb-success:#12a574;--bb-success-soft:#e8f6f0;--bb-warning:#d98a04;--bb-warning-soft:#fff4dc;--bb-danger:#d6343f;--bb-danger-soft:#fdecee;--bb-radius-sm:10px;--bb-radius:14px;--bb-radius-lg:20px;--bb-shadow:0 6px 24px #1a2b4514}

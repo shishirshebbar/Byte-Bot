@@ -1,6 +1,6 @@
 """Versioned categorical decision table, independent of the provider."""
 from datetime import datetime, timezone
-from .analysis_schemas import Assessment, RULE_VERSION
+from .analysis_schemas import Assessment, RULE_VERSION, SCORE_VERSION
 from .intelligence import normalize
 from .extraction import VPA
 
@@ -16,11 +16,44 @@ LABELS = {
     'remote_access': 'A request to enable remote access was detected.',
     'screen_sharing': 'A request to share the screen was detected.',
 }
+# Explainable score weights (score-1). The score summarises supported signals for
+# display; the categorical decision table below never reads it.
+WEIGHTS = {
+    'credential_request': 30, 'collect_approval': 30, 'remote_access': 30, 'screen_sharing': 30,
+    'intel_match': 25, 'threat': 20, 'intel_link': 15, 'destination_mismatch': 15, 'bank_avoidance': 15,
+    'reported_destination_mismatch': 10, 'secrecy': 10, 'urgency': 10, 'repayment': 10, 'unexpected': 10,
+    'same_destination': 0, 'reported_same_destination': 0,
+}
+FACTOR_LABELS = {
+    'credential_request': 'Credential request', 'collect_approval': 'Collect-request approval', 'remote_access': 'Remote-access request',
+    'screen_sharing': 'Screen-sharing request', 'intel_match': 'Reported in simulated intelligence', 'threat': 'Threats',
+    'intel_link': 'Linked to reported incidents', 'destination_mismatch': 'Different repayment UPI ID', 'bank_avoidance': 'Told to avoid the bank',
+    'reported_destination_mismatch': 'Different destination reported', 'secrecy': 'Asked for secrecy', 'urgency': 'Urgency',
+    'repayment': 'Repayment request', 'unexpected': 'Unexpected payment', 'same_destination': 'Same UPI ID as sender (no reduction)',
+    'reported_same_destination': 'Same destination reported (no reduction)',
+}
+
+
+def score(findings):
+    """One factor per signal kind, whatever the number of sources; capped at 100."""
+    factors = {}
+    for finding in findings:
+        kind = finding['kind']
+        if kind not in WEIGHTS:
+            continue
+        factor = factors.setdefault(kind, {'id': kind, 'label': FACTOR_LABELS[kind], 'weight': WEIGHTS[kind],
+                                           'status': 'fail' if WEIGHTS[kind] >= 15 else 'warn', 'sources': [], 'detail': finding['text']})
+        if finding['source'] not in factor['sources']:
+            factor['sources'].append(finding['source'])
+    ordered = sorted(factors.values(), key=lambda f: (-f['weight'], f['id']))
+    return min(100, sum(f['weight'] for f in ordered)), ordered
+
+
 UNCERTAINTY = ('Byte Bot cannot confirm from the information provided whether the sender is a scammer. '
                'This assessment identifies signals that need verification; it is not a definitive finding of fraud.')
 
 
-def assess(transaction, context, evidence, extraction, matches):
+def assess(transaction, context, evidence, extraction, matches, links=()):
     findings, limitations = [], list(extraction['notices'])
     pressures, dangerous = set(), set()
     repayment = context['repayment_requested'] == 'yes'
@@ -88,7 +121,13 @@ def assess(transaction, context, evidence, extraction, matches):
         suspicious = True
         add('intel_match', f"Exact simulated match for {match['identifier']} linked to {match['incident_reference']}. A match is not proof of guilt.",
             match['source_label'], match['fixture_key'], 'simulated-intel-match')
-    if not matches:
+    for link in links:
+        suspicious = True
+        hops = 'directly' if link['min_hops'] == 1 else 'through a shared contact or device'
+        add('intel_link', f"{link['identifier']} is linked {hops} to {len(link['incidents'])} reported incident"
+            f"{'' if len(link['incidents']) == 1 else 's'} ({', '.join(link['incidents'])}). A link is not proof of guilt.",
+            link['source_label'], link['identifier'], 'simulated-graph-link')
+    if not matches and not links:
         limitations.append('No match found in the available demo data. This is not a trust or safety guarantee.')
     if not transaction or transaction['status'] != 'successful':
         category, decision = 'Unable to assess', 'transaction-not-complete'
@@ -103,6 +142,7 @@ def assess(transaction, context, evidence, extraction, matches):
     else:
         category, decision = 'Unable to assess', 'insufficient-information'
     add('decision', f'Applied rule: {decision}.', 'Python decision table', decision, decision)
+    total, factors = score(findings)
     limitations.append(UNCERTAINTY)
     if category == 'Unable to assess':
         limitations.append('Check the actual transaction status and provide missing or corrected context; completed funds cannot be assumed.')
@@ -118,4 +158,5 @@ def assess(transaction, context, evidence, extraction, matches):
         triggered_rules=sorted({f['rule_id'] for f in findings}), findings=findings,
         limitations=list(dict.fromkeys(limitations)), recommendations=[],
         summary=summary, generated_at=datetime.now(timezone.utc), intelligence_matches=matches,
-        extraction_status=extraction['status'], provider_mode=extraction['provider_mode']).model_dump(mode='json')
+        extraction_status=extraction['status'], provider_mode=extraction['provider_mode'],
+        risk_score=total, score_version=SCORE_VERSION, risk_factors=factors, graph_links=list(links)).model_dump(mode='json')

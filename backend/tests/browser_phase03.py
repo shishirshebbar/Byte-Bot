@@ -54,7 +54,10 @@ with sync_playwright() as p:
         assert page.get_by_role('heading', name='Findings and sources', exact=True).is_visible()
         assert page.locator('.finding-reference').count() >= 2
         assert page.get_by_text('This assessment identifies signals', exact=False).is_visible()
-        assert page.get_by_text('No match found in the available demo data.', exact=False).is_visible()
+        if scenario in ('F', 'K'):  # Their repayment IDs link to reported incidents in the simulated graph.
+            assert page.get_by_text('A link is not proof of guilt.', exact=False).first.is_visible()
+        else:
+            assert page.get_by_text('No match found in the available demo data.', exact=False).is_visible()
         if scenario in ('B', 'C'):
             page.get_by_role('heading', name='The requested UPI ID matches the sender.', exact=False).first.wait_for()
         if scenario == 'A':
@@ -77,7 +80,7 @@ with sync_playwright() as p:
         page.get_by_role('heading', name=fixture['category'], exact=True).wait_for()
         # An external tab changes saved input; a reload must not retrieve stale results.
         current = context.request.get(BASE + api).json()
-        context.request.patch(BASE + api + '/context', data={'expected_revision': current['input_revision'], 'already_sent_money': 'yes'})
+        context.request.patch(BASE + api + '/context', data={'expected_revision': current['input_revision'], 'already_sent_money': 'no' if current['context']['already_sent_money'] == 'yes' else 'yes'})
         page.reload()
         page.get_by_role('heading', name='Analysis needed', exact=True).wait_for()
         assert page.get_by_role('heading', name=fixture['category'], exact=True).count() == 0

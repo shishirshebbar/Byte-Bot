@@ -355,3 +355,112 @@ The baseline actions were analyze, generate report, download, open **My Incident
 - `git diff --check` passed. The Byte Bot frontend, preview, API, and database remained on ports 5174, 4174, 8000, and 55433.
 
 A timed human rehearsal and live Gemini verification remain pending. The automated benchmark measures synthetic workflow completion. Fraud prevention, detection precision, and support handling time remain pilot metrics.
+
+## 2026-11-14 — AI teammate Phases 0 and 1
+
+Branch `teammate-phase-0-1`. Plan: [teammate plan](teammate-plan.md).
+
+- **Phase 0 complete.** Saved the teammate plan, linked it from the README, and updated the boundaries in `AGENTS.md` and the README: actions only against labelled simulated systems, from the playbook, after the Python policy. Added `--bb-*` design tokens to `styles.css` for Phase 4. Grew the scenario catalog from A–E to A–K: money already sent (F), remote-access request (G), instruction injection (H), expected cashback (I), missing details (J), and a ₹75,000 high-value request (K). F–K transactions are on-demand templates copied only when loaded, so the default history keeps eight transactions. Hindi/Hinglish scenarios move to Phase 6 with multilingual extraction.
+- **Phase 1 complete.** Supervisor-led LangGraph with deterministic routing, a live decision trace, follow-up questions that pause and resume the investigation, a playbook planner, `agent-policy-1` verdicts, and escalation with priority and SLA. Migration 006 adds `agent_trace`, `follow_up_questions`, `agent_actions`, and `escalations`. New endpoints: `POST /investigations/{id}/follow-ups` and `POST /investigations/{id}/escalate`. Contracts are in [architecture](architecture.md#implemented-teammate-phase-1-contracts-supervisor-agent). Actions are recorded with verdicts; execution against simulated systems is Phase 3.
+
+### Commands and results
+
+- Baseline before edits: `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed **100 tests**.
+- After the changes, the same command passed **131 of 132**. The failure was a test assertion that queried the run-keyed `agent_trace` by case ID. After correcting it, `pytest backend/tests/test_demo.py -k reset_repeatability` passed. The new `backend/tests/test_agent.py` passes **20 tests** covering all eleven scenario outcomes, trace order, escalated-case approvals, injection handling, follow-up pause/resume and replay protection, "not sure" and repeated-round escalation, revocation on input change, customer escalation merge and ownership, policy and planner units, and routing.
+- Existing tests were updated only for the larger catalog (scenario IDs, per-template amounts, on-demand template counts), for the new agent tables in reset checks, and for the expected `escalation_opened` audit event when unread evidence leaves no assessment.
+- `npm --prefix frontend run build` passed (agent and escalation types added; no screen changes yet).
+- From `backend/`, `bytebot.cli migrate` twice and `seed` twice passed on the demo database. Restarted only the Byte Bot API on 8000 with `BYTEBOT_EXTRACTION_MODE=fixture`; health reported ready. Through the 5174 proxy, Scenario F returned **High concern / escalated (urgent)** with trace `transaction_context → message_analysis → risk_investigation → gather_context → plan_actions → policy_gate → escalate → incident_resolution`, and Scenario J returned **Unable to assess / needs_customer_info**, skipping planning.
+- **Pending:** the six Playwright browser suites were not rerun in this session. `browser_phase03.py` iterates every scenario and now includes F–K.
+
+## 2026-11-14 — AI teammate Phase 3 (simulated systems)
+
+- **Complete.** Added `systems.py`, `actions.py`, migration 007 (`simulated_records`, `declined` state, attempt count, audit events), the consent and undo endpoints, automatic execution of `auto` steps at publish, and an actions section in reports. Contracts are in [architecture](architecture.md#implemented-teammate-phase-3-contracts-simulated-systems). Phase 2 (risk score and intelligence graph) is deferred, following the plan's priority order.
+- `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed **137 of 138**. The failure was an audit-order assertion that needed the new automatic `action_executed` event; after updating it, `pytest backend/tests/test_reports.py -q` passed **21**. New `backend/tests/test_actions.py` covers automatic receipts, consent executing once, decline, undo and irreversibility, revision/ownership/state checks, an outage recovered by retry, a visible failure after two outages, and executed steps surviving an input change.
+- `npm --prefix frontend run build` passed. From `backend/`, `bytebot.cli migrate` and `seed` passed on the demo database, and the Byte Bot API on 8000 was restarted in fixture mode. Live through the 5174 proxy: Scenario B published with the notification executed (`SIM-NOTE-…`); consenting to the hold returned `executed` with a `SIM-HOLD-…` reference.
+- **Pending:** the Playwright browser suites were not rerun. The phone does not yet show consent cards or receipts (Phase 4).
+
+## 2026-11-14 — AI teammate Phase 4 (phone redesign)
+
+- **Built.** The `/` phone now follows the reference designs. `/workspace` keeps its form flow so the earlier suites stay valid, and also shows the assistant and risk panels on results.
+  - **History (`phone-history.tsx`):** date groups (Today, Yesterday, dates), round icons with success, pending, and failed badges, an "Unexpected credit" flag, a proactive alert card, received-total chips, search, status filter chips, and a four-item tab bar (Transactions, Scan, Byte Bot, Demo controls).
+  - **Assistant (`agent-ui.tsx` `AgentPanel`):** a chat panel with a privacy note, bot bubbles by outcome, quick-reply chips for follow-up questions, consent cards with Approve and Decline, receipts with `SIM-…` references and Undo, an escalation card with priority and SLA, "Talk to a person", and a "Was this helpful?" prompt. The feedback is local only until Phase 7 stores it.
+  - **Risk view (`RiskOverview`):** a three-level concern meter (no numeric score until Phase 2), amount, sender, and measured analysis time. Risk factors use ✕/⚠/✓ icons; factors reported by both the customer and the evidence merge into one row with both sources.
+  - **Presenter panel:** a supervisor-decision trace and outcome under the four workflow stages.
+  - **Backend:** `analysis.duration_seconds` (the sum of recorded stage durations).
+  - **Deferred:** chat-first intake that replaces the intake form, the period picker sheet, and the numeric score gauge (Phase 2).
+- **Fixes found by verification.** A resumed run can record a stage without a duration, so the total skips null values. `browser_phase03.py` now toggles `already_sent_money`, because Scenario F already starts at "yes".
+- **Checks.**
+  - `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed **138**.
+  - `npm --prefix frontend run build` passed.
+  - The Byte Bot API on 8000 was restarted in fixture mode.
+  - With `BYTEBOT_WEB_URL=http://127.0.0.1:5174`, `browser_presentation.py`, `browser_smoke.py`, `browser_phase03.py` (all A–K, about 1.4 seconds each), and `browser_phase04.py` passed.
+  - Screenshots in `.cache/phase4/` were inspected: history, Scenario B chat before and after approving the hold, risk factors, and Scenario J follow-up chips.
+  - `browser_phase02.py` (real CPU OCR) and `browser_phase05.py` (screenshot rehearsal 3.23 seconds) also passed, so all six browser suites pass after Phase 4.
+
+## 2026-11-14 — AI teammate Phase 5 (human console)
+
+- **Complete.** Added migration 008, `console.py`, `console.tsx`, and `console.css`, with human actor support in `actions.py` and the assignee in the customer escalation view. Contracts are in [architecture](architecture.md#implemented-teammate-phase-5-contracts-human-console).
+- **Checks.**
+  - `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed **143**, including the new `test_console.py`: separate session in both directions, escalated-only access with a masked customer ID, priority ordering, human approve/reject with a `SIM-1930-…` receipt visible to the customer, redacted notes, resolution and re-escalation, the notification feed, integrations, and undo.
+  - `npm --prefix frontend run build` passed.
+  - From `backend/`, `bytebot.cli migrate` (twice) passed on the demo database, and the Byte Bot API on 8000 was restarted in fixture mode.
+  - `browser_presentation.py` passed against 5174.
+  - Screenshots in `.cache/phase5/` were inspected: the console case before and after approval, notifications, integrations, and the customer phone showing the human-approved draft as Done.
+- **Demo data note.** Seven escalations created by earlier rehearsal sessions in the local demo database were marked resolved, so the queue starts clean. This affected only local demo rows.
+- **Pending.** The workspace browser suites were not rerun after Phase 5. Their screens were unchanged in this phase.
+
+## 2026-11-14 — AI teammate Phase 6 (Sarvam AI)
+
+- **Complete.** Sarvam replaces Gemini as the live provider. The key is stored only in the gitignored `.env` (verified absent from source and docs). `.env` now sets `BYTEBOT_EXTRACTION_MODE=sarvam`, and `.env.example` documents `SARVAM_API_KEY` blank.
+  - **Added:** `sarvam.py`, `voice_routes.py`, migration 009, Hinglish rules, Scenario L, `voice-ui.tsx` (record or upload a voice note, Listen to guidance in 11 languages), `sarvam_smoke.py`, and `test_voice.py`. Contracts are in [architecture](architecture.md#implemented-teammate-phase-6-contracts-sarvam-ai).
+- **API notes found during integration.**
+  - `reasoning_effort: none` is rejected despite the docs.
+  - `sarvam-105b` took 12.9 seconds with low reasoning; `sarvam-105b-conversations` took 0.4–0.8 seconds, so it is the extraction model.
+  - Mayura translated the Hinglish "wapas karo" loosely, so local Hinglish rules and the original-language transcript are kept.
+- **Checks.**
+  - `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed **153**. One earlier run made a single live Sarvam extraction call with synthetic Scenario A text, because a test built the app from the local `.env`; `conftest.py` now blocks live providers.
+  - `npm --prefix frontend run build` passed.
+  - `.\.venv\Scripts\python.exe backend/tests/sarvam_smoke.py --live` (synthetic content only): text-to-speech 1.85 seconds, speech-to-text 0.52 seconds (detected `hi-IN`), translation 0.87 seconds. Extraction: B 0.47 seconds (complete), L 0.52 seconds (complete), H 0.37 seconds (complete), G 0.44 seconds (partial; the amount claim was discarded).
+  - **Live browser run on 5174 with the API in `sarvam` mode.** A synthetic Hindi voice note generated by Sarvam text-to-speech was uploaded and transcribed and translated in 1.87 seconds. After confirmation, analysis with live Sarvam extraction returned **High concern** in 2.44 seconds. "Listen" in Hindi returned translated guidance with audio. Screenshots are in `.cache/phase6/`.
+- **Services.** From `backend/`, `bytebot.cli migrate` and `seed` passed on the demo database. The Byte Bot API on 8000 now runs with `BYTEBOT_EXTRACTION_MODE=sarvam`.
+- **Pending.** The Playwright suites were written for fixture mode. Restart the API with `BYTEBOT_EXTRACTION_MODE=fixture` before running them. They were not rerun in this phase.
+
+## 2026-11-14 — AI teammate Phase 2 (risk score and fraud graph)
+
+- **Complete.** Added migration 010, graph seeding and the two-hop query in `intelligence.py`, the score and graph-link findings in `risk_rules.py`, `GET /investigations/{id}/intel-graph`, a gauge, weighted factors, and a fraud-graph view in the phone, and the score in the console. Contracts are in [architecture](architecture.md#implemented-teammate-phase-2-contracts-risk-score-and-fraud-graph).
+- **Checks.**
+  - `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed **159**. The new `test_graph_score.py` covers two-hop links (K: three incidents), the zero-weight same-ID factor with merged sources (B: 55), the category being unaffected by any weights, the 100 cap, and owner scoping of the graph endpoint.
+  - `npm --prefix frontend run build` passed.
+  - From `backend/`, `bytebot.cli migrate` and `seed` passed on the demo database. The API on 8000 was restarted in `sarvam` mode.
+  - Live in the presentation, Scenario K showed **Needs verification · 60/100** with the mule-ring graph. Screenshots are in `.cache/phase2/`.
+- **Pending.** The Playwright suites need the API in fixture mode and were not rerun in this phase.
+
+## 2026-11-14 — AI teammate Phase 7 (evaluation and metrics)
+
+- **Complete.** Added `eval_teammate.py`, `metrics.py`, migration 011, `metrics.tsx`, feedback saving from the chat, and a presenter link. Contracts are in [architecture](architecture.md#implemented-teammate-phase-7-contracts-evaluation-and-metrics).
+- **Evaluation results (12 scenarios, A–L).**
+  - `.\.venv\Scripts\python.exe backend/tests/eval_teammate.py` (fixture extraction): category accuracy **100%**, escalation precision **100%** and recall **100%**, handled without a person **75%** (F, H, and K escalate by policy), **0** policy violations, injection contained, median **2** customer taps, **12/12** reports prepared.
+  - `... eval_teammate.py --sarvam` (live Sarvam extraction, synthetic text only): the same results, with a median analysis of **0.51 seconds**.
+- **Checks.**
+  - `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed **161**. The new `test_metrics.py` covers owner-scoped strict feedback and outcome counts without personal data.
+  - `npm --prefix frontend run build` passed.
+  - From `backend/`, `bytebot.cli migrate` passed on the demo database, and the API on 8000 was restarted in `sarvam` mode.
+  - `/metrics` was screenshotted at 1440 px and 390 px with no horizontal page overflow (`.cache/phase7/`).
+- **Notes.** The live demo tiles count every local demo session, including earlier automated rehearsals; for example, a median analysis of 0.01 seconds reflects in-process fixture runs. Review minutes saved is an estimate, not a measurement.
+
+## 2026-11-14 — AI teammate Phase 8 (security hardening)
+
+- **Complete.** Added `docs/threat-model.md`, migration 012 with the hash-chained ledger and verifier, the console "Ledger verified" badge, `security.py` (rate limits and headers), preview CSP and permissions in `vite.config.ts`, Hinglish and extra English injection patterns, and `test_security.py`. Contracts are in [architecture](architecture.md#implemented-teammate-phase-8-contracts-security-hardening).
+- **Test changes.** `test_reports::test_phase03_upgrade_backfill_repeatability` rebuilds the historical audit table, so it now also re-applies migration 012 (the ledger columns belong to that table).
+- **Checks.**
+  - `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed **186**. The new `test_security.py` (25 cases) covers:
+    - the 8-string English and Hinglish injection corpus and the benign corpus (with one deliberate broad match);
+    - injected evidence never lowering the category and never auto-running account steps;
+    - six hostile provider outputs contained;
+    - ledger edit and deletion detection, and the console ledger status;
+    - per-session rate limits, with speech limited separately;
+    - security headers.
+  - `npm --prefix frontend run build` passed.
+  - From `backend/`, `bytebot.cli migrate` passed on the demo database.
+  - Restarted only the Byte Bot API (8000, `sarvam` mode) and the preview (4174).
+  - **Playwright on the 4174 preview with the strict CSP.** Scenario F analysis, the fraud graph, the console with "Ledger verified", and `/metrics` loaded with **no console errors or CSP violations**. Screenshot: `.cache/phase8/console-ledger.png`.

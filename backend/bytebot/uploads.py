@@ -24,11 +24,11 @@ async def json_body(request):
         raise EvidenceError(422, 'invalid_input', 'Check the supplied field values.') from None
 
 
-async def screenshot_body(request):
+async def screenshot_body(request, file_limit=FILE_LIMIT, noun='screenshot'):
     media, options = parse_options_header(request.headers.get('content-type', ''))
     boundary = options.get(b'boundary', b'')
     if media != b'multipart/form-data' or not 1 <= len(boundary) <= 200:
-        raise EvidenceError(422, 'invalid_upload', 'Submit one screenshot and its expected revision.')
+        raise EvidenceError(422, 'invalid_upload', f'Submit one {noun} and its expected revision.')
     body = await read_body(request, BODY_LIMIT)
     parts, current, header, done = [], {}, [bytearray(), bytearray()], [False]
 
@@ -47,8 +47,8 @@ async def screenshot_body(request):
         header[1].clear()
 
     def data(chunk, start, end):
-        if len(current['data']) + end - start > FILE_LIMIT:
-            raise EvidenceError(413, 'evidence_too_large', 'Use an image up to 5 MiB.')
+        if len(current['data']) + end - start > file_limit:
+            raise EvidenceError(413, 'evidence_too_large', f'Use a {noun} up to {file_limit // (1024 * 1024)} MiB.')
         current['data'].extend(chunk[start:end])
 
     callbacks = {
@@ -81,4 +81,4 @@ async def screenshot_body(request):
     except EvidenceError:
         raise
     except Exception:
-        raise EvidenceError(422, 'invalid_upload', 'Submit one screenshot and its expected revision.') from None
+        raise EvidenceError(422, 'invalid_upload', f'Submit one {noun} and its expected revision.') from None

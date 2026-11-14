@@ -13,6 +13,9 @@ import { ReportPage } from './report';
 import { DemoControls } from './demo';
 import { Presentation } from './presentation';
 import { useScreenPath } from './screen-path';
+import { PhoneHistory } from './phone-history';
+import { ConsolePage } from './console';
+import { MetricsPage } from './metrics';
 
 function useData<T>(path: string, refresh = 0) {
   const [data, setData] = useState<T>();
@@ -79,7 +82,8 @@ function PresentationLayout() {
 }
 
 function PresentationHistory() {
-  return <History transactions={useOutletContext<ReturnType<typeof useTransactions>>()} />;
+  const { data, error, retry } = useOutletContext<ReturnType<typeof useTransactions>>();
+  return data ? <PhoneHistory transactions={data.transactions} /> : <><h1>Transaction history</h1><Notice error={error} retry={retry} /></>;
 }
 
 function MissingPage() {
@@ -97,6 +101,10 @@ const screens: RouteObject[] = [
 ];
 const router = createBrowserRouter([
   { path: '/', element: <PresentationLayout />, children: [{ index: true, element: <PresentationHistory /> }, ...screens] },
+  { path: '/metrics', element: <MetricsPage /> },
+  { path: '/console', element: <ConsolePage /> },
+  { path: '/console/cases/:id', element: <ConsolePage /> },
+  { path: '/console/integrations', element: <ConsolePage view="integrations" /> },
   { path: '/workspace', element: <WorkspaceLayout />, children: [{ index: true, element: <WorkspaceHistory /> }, ...screens] },
 ]);
 createRoot(document.getElementById('root')!).render(<React.StrictMode><RouterProvider router={router} /></React.StrictMode>);

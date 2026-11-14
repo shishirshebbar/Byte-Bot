@@ -6,10 +6,10 @@ from .analysis_graph import build_graph
 
 
 class AnalysisWorker:
-    def __init__(self, pool, provider, slots=2, poll_seconds=1, heartbeat_seconds=10):
+    def __init__(self, pool, provider, slots=2, poll_seconds=1, heartbeat_seconds=10, systems=None):
         self.pool, self.provider = pool, provider
         self.slots, self.poll_seconds, self.heartbeat_seconds = slots, poll_seconds, heartbeat_seconds
-        self.graph = build_graph(pool, provider)
+        self.graph = build_graph(pool, provider, systems)
         self.tasks = []
 
     def start(self):

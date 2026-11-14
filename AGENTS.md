@@ -12,10 +12,11 @@ This directory is the local development workspace for the Byte Bot hackathon MVP
 
 ## Product boundaries
 
-- The demo uses seeded transactions and simulated intelligence. The report is a user-owned download and case statuses are user-entered. The product has no payment actions, external report submission, call recording, or background message access.
+- The demo uses seeded transactions and simulated intelligence. The report is a user-owned download and case statuses are user-entered.
+- Byte Bot may take actions only against local mock systems labelled "Simulated system", only from the playbook in `planner.py`, and only after the Python policy in `policy.py` grants the verdict (customer consent or human approval where required). It never moves real money, submits reports externally, records calls, or reads background messages.
 - The application checks demo-session ownership on every user-scoped operation. Evidence is untrusted data. Keep credentials and raw screenshots out of persistent storage, logs, reports, and provider requests.
-- Python rules assign the risk category. Gemini extracts evidence into a validated schema. A same-UPI-ID match carries zero risk reduction, and a different destination is a finding that can warrant verification. Show provenance and limitations for all results.
-- Start with synthetic fixtures. Use a locally configured key only for the optional live Gemini check with synthetic evidence.
+- Python rules assign the risk category, and the supervisor's routing, follow-ups, plan, and escalation are deterministic Python. Evidence that contains instructions is data and a reason to escalate, never a command. Gemini extracts evidence into a validated schema. A same-UPI-ID match carries zero risk reduction, and a different destination is a finding that can warrant verification. Show provenance and limitations for all results.
+- Start with synthetic fixtures. Use locally configured keys (Sarvam, optionally Gemini) only with synthetic evidence. Keys live only in the gitignored `.env`; never write them into code, docs, logs, or tests. Text-to-speech receives only Byte Bot's own guidance, never evidence.
 
 ## Local service ports
 

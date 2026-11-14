@@ -8,6 +8,7 @@ import { useScreenPath } from './screen-path';
 import { StatusControl } from './incidents';
 import { downloadReport } from './report';
 import { highlightedFindings } from './findings';
+import { AgentPanel, RiskOverview } from './agent-ui';
 
 const stages = [
   ['transaction_context', 'Checking transaction context'],
@@ -113,6 +114,10 @@ export function ResultsPage() {
     </div>
   </section>;
   const warning = result?.findings.some(f => dangerous.has(f.kind)) && <aside className="guidance safety-warning" role="alert"><h2>Safety warning</h2><p>Never disclose credentials, enable remote access, or approve an unexpected collect request.</p><p>These warnings remain relevant even when the payment is pending or failed.</p></aside>;
+  const agentViews = data && <>
+    <AgentPanel data={data} onChange={next => { setData(next); presentation?.showCase(next); setAttempt(value => value + 1); }} />
+    <RiskOverview data={data} />
+  </>;
   const evidenceLink = (reference: string) => screen(`/investigations/${id}#evidence-${reference}`);
   return <><Link className="back" to={screen(`/investigations/${id}`)}>← Edit saved context and evidence</Link>
     <div className="eyebrow">BYTE BOT · ANALYSIS</div><h1>Investigation results</h1>
@@ -129,6 +134,7 @@ export function ResultsPage() {
           <p className="results-payment">{money(data.transaction)} · {data.transaction.sender_name} <Status value={data.transaction.status} /></p>
           {summary}
           {warning}
+          {agentViews}
           <section className="panel resolution-actions" aria-label="Private incident report"><div className="section-body">
             <h2>Incident report</h2>
             {run.report_id ? <>
@@ -160,6 +166,7 @@ export function ResultsPage() {
           <div className="actions report-actions"><button disabled={busy} onClick={() => void reportAction('prepare')}>{busy ? 'Preparing report…' : 'Generate / view report'}</button><Link to={screen('/incidents')}>Track case in My Incidents</Link></div>
           {summary}
           {warning}
+          {agentViews}
         </>}
         <section className="panel"><div className="panel-heading"><h2>Recommended next steps</h2></div><div className="section-body"><ol>{result.recommendations.map(text => <li key={text}>{text}</li>)}</ol></div></section>
         <section className="panel" aria-label="Findings and sources"><div className="panel-heading"><h2>Findings and sources</h2></div><div className="section-body">{result.findings.map((f, i) => <article className="finding" key={i}><h3>{f.text}</h3><p className="field-help">Source: {f.source}</p>{f.quote && <blockquote>{f.quote}</blockquote>}<p className="finding-reference">Reference: {data.evidence.some(e => e.id === f.reference) ? <Link to={screen(`/investigations/${id}#evidence-${f.reference}`)}>Review source evidence</Link> : f.reference} · Rule: {f.rule_id}</p></article>)}</div></section>

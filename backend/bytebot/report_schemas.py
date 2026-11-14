@@ -28,7 +28,7 @@ class IncidentList(BaseModel):
 
 class ReportEvidence(BaseModel):
     id: UUID
-    type: Literal['message', 'call_summary', 'screenshot']
+    type: Literal['message', 'call_summary', 'screenshot', 'voice_note']
     source: str
     text: str
 
@@ -38,6 +38,16 @@ class ReportSignal(BaseModel):
     kind: Kind
     quote: str
     value: str | None = None
+
+
+class ReportAction(BaseModel):
+    action_type: str
+    label: str
+    system: str
+    system_label: str
+    state: str
+    actor: str
+    system_reference: str | None = None
 
 
 class ReportSnapshot(BaseModel):
@@ -56,3 +66,4 @@ class ReportSnapshot(BaseModel):
     assessment: Assessment
     unknowns: list[str]
     notices: list[str]
+    actions: list[ReportAction] = []
