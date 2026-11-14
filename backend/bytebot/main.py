@@ -1,7 +1,16 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from .db import make_pool
-from .settings import DATABASE_URL, GEMINI_API_KEY, GEMINI_MODEL, EXTRACTION_MODE, SARVAM_API_KEY, SARVAM_CHAT_MODEL
+from .settings import (
+    CORS_ORIGINS,
+    DATABASE_URL,
+    EXTRACTION_MODE,
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
+    SARVAM_API_KEY,
+    SARVAM_CHAT_MODEL,
+)
 from .extraction import GeminiProvider
 from .analysis_worker import AnalysisWorker
 from .analysis_routes import router as analysis_router
@@ -55,6 +64,14 @@ def create_app(database_url=DATABASE_URL, ocr_adapter=None, extraction_provider=
 
     app = FastAPI(title="Byte Bot", lifespan=lifespan)
     install_errors(app)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(CORS_ORIGINS),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.include_router(router, prefix="/api/v1")
     app.include_router(investigation_router, prefix="/api/v1")
     app.include_router(analysis_router, prefix="/api/v1")

@@ -483,6 +483,25 @@ Branch `teammate-phase-0-1`. Plan: [teammate plan](teammate-plan.md).
 - **Note.** The RBI discussion-paper point from the pitch is not cited in the docs yet; confirm the exact source and wording first.
 - **Environment.** PostgreSQL still runs on **55434** because Windows refused to bind 55433; `.env` points there.
 
+## 2026-11-14 — Railway deployment configuration
+
+- **Deployment files created:**
+  - `Procfile` — Railway entrypoint: `bash backend/start.sh`
+  - `railway.json` — Nixpacks builder configuration for Railway
+  - `.railwayignore` — excludes `.cache/`, `.venv/`, `node_modules/`, `.pytest_cache/`, etc.
+  - `backend/start.sh` — shell script: pip install, migrations, seed, uvicorn start
+  - `docs/RAILWAY_DEPLOYMENT.md` — comprehensive 5-minute quickstart with troubleshooting
+- **OCR and Sarvam verification complete:**
+  - Real OCR smoke test: legible 6.75s, unreadable 0.84s (CPU, models cached)
+  - Live Sarvam: text-to-speech 2.01s, speech-to-text 0.42s, translate 0.77s, extraction 0.30–0.96s (synthetic evidence only)
+- **Remaining before go-live:**
+  1. Commit and push deployment files to GitHub
+  2. Link Railway project to GitHub repo (already done per user)
+  3. Add PostgreSQL plugin in Railway (click **Add Plugin**)
+  4. Set environment variables in Railway dashboard (see guide)
+  5. Click **Trigger Deploy** — Railway will build and start both backend and frontend
+  6. Verify at `https://your-railway-app.railway.app/`
+
 ## 2026-11-14 — Presentation UI redesign ("Story Board")
 
 - **Complete.** Redesigned the presentation, console and metrics for a 1440×900 screen share (plan: senior UX/UI review). No backend logic changed.
@@ -497,3 +516,13 @@ Branch `teammate-phase-0-1`. Plan: [teammate plan](teammate-plan.md).
   - API restarted in **fixture** mode on 8000; all seven browser suites passed: `browser_smoke`, `browser_phase02` through `browser_phase05` and `browser_presentation` on 5174, and `browser_teammate` on the 4174 preview.
   - A scratch Playwright stage tour of the empty state and worlds 1–4 passed at 1440×900 (dev and preview) and 1280×720, with no page scroll at either size and no page errors. Horizontal overflow checked at 1440, 390 and 320.
   - Backend unchanged, so pytest was not re-run.
+
+## 2026-11-14 — Merge main and resolve progress conflict
+
+- Merged `origin/main` into `teammate-phase-0-1`. The only conflict was `docs/progress.md`; retained both the Railway deployment and Story Board history entries.
+- Replaced the incoming wildcard credentialed CORS policy with the configured `BYTEBOT_CORS_ORIGINS` allowlist. Local defaults are loopback frontend origins; Railway configuration documents its frontend origin.
+- **Checks.**
+  - `npm --prefix frontend ci` passed; npm reported 0 vulnerabilities.
+  - `npm --prefix frontend run build` passed (with existing React Router `use client` bundler warnings).
+  - Python standard-library syntax checks passed for `backend/bytebot/main.py` and `backend/bytebot/settings.py`.
+  - The CORS runtime smoke check could not run because FastAPI is not installed in this workspace. The backend pytest suite was not run because database URLs are unset and the suite recreates the test database schema.

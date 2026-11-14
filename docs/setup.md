@@ -51,6 +51,7 @@ The API and CLI load the root `.env`; existing shell variables take precedence. 
 | `DATABASE_URL` | No code default; example points to `127.0.0.1:55433/bytebot` | Required demo database connection |
 | `TEST_DATABASE_URL` | No code default; example points to `127.0.0.1:55433/bytebot_test` | Separate database required for integration tests |
 | `COOKIE_SECURE` | `false` | Use `true` when serving through HTTPS; keep false for loopback HTTP |
+| `BYTEBOT_CORS_ORIGINS` | `http://127.0.0.1:5174,http://localhost:5174` | Comma-separated browser origins allowed to make credentialed API requests; configure the frontend origin for deployment |
 | `BYTEBOT_EXTRACTION_MODE` | `gemini` | `sarvam` uses the live Sarvam LLM; `fixture` explicitly enables deterministic synthetic extraction |
 | `GEMINI_API_KEY` | Empty | Optional server-side Gemini credential |
 | `GEMINI_MODEL` | Empty | Optional Gemini model identifier; required with the key for live extraction |
