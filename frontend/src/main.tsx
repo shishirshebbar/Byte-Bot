@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider, Outlet, Link, useLocation, useOutletContext, useParams, type RouteObject } from 'react-router-dom';
 import { ArrowDownLeft, ArrowLeft, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import '@fontsource-variable/manrope';
+import './tokens.css';
 import './styles.css';
 import { ApiError, get, type Transaction } from './api';
 import { date, money, Status } from './transaction-ui';

@@ -145,10 +145,6 @@ function Workspace({ initial, reload }: { initial: Investigation; reload: () => 
   const statusControl = <StatusControl id={data.id} value={data} onChange={next => setData(v => ({ ...v, case_status: next.case_status, status_revision: next.status_revision }))} />;
   return <><Link className="back" to={screen(`/transactions/${t.id}`)}>← Transaction details</Link><div className="eyebrow">BYTE BOT · GUIDED INVESTIGATION</div><h1>Let’s understand what happened</h1><p className="intro">Save your answers and voluntarily share the evidence you want to review.</p>
     {!presentation && statusControl}
-    <section className="panel attached" aria-label="Attached transaction"><div className="panel-heading"><h2>{money(t)} · {t.sender_name}</h2><Status value={t.status} /></div><div className="section-body"><p>{statusExplanation(t)}</p><p>{t.sender_vpa} · {date(t.occurred_at)} IST</p><p>Reference: {t.reference} · Source: synthetic demo transaction</p></div></section>
-    <aside className="guidance">Never share your UPI PIN, OTP, password, or CVV. Do not make a separate repayment because of pressure. Verify the original credit with your bank using its official contact details. This demo cannot move money.</aside>
-    <div role="status" aria-live="polite" className="save-status">{busy ? 'Saving or reading screenshot…' : message || `Saved case · revision ${data.input_revision}`}</div>
-    {failure && <div role="alert" className="error-box"><p>{failure}</p>{conflict && <button onClick={() => { if (!dirty || window.confirm('Reload and discard unsaved changes?')) reload(); }}>Reload saved case</button>}</div>}
     {presentation && <section className="panel quick-review" aria-label="Case review">
       <div className="section-body">
         <h2>Review before analysis</h2>
@@ -166,6 +162,10 @@ function Workspace({ initial, reload }: { initial: Investigation; reload: () => 
         {analyze}
       </div>
     </section>}
+    <section className="panel attached" aria-label="Attached transaction"><div className="panel-heading"><h2>{money(t)} · {t.sender_name}</h2><Status value={t.status} /></div><div className="section-body"><p>{statusExplanation(t)}</p><p>{t.sender_vpa} · {date(t.occurred_at)} IST</p><p>Reference: {t.reference} · Source: synthetic demo transaction</p></div></section>
+    <aside className="guidance">Never share your UPI PIN, OTP, password, or CVV. Do not make a separate repayment because of pressure. Verify the original credit with your bank using its official contact details. This demo cannot move money.</aside>
+    <div role="status" aria-live="polite" className="save-status">{busy ? 'Saving or reading screenshot…' : message || `Saved case · revision ${data.input_revision}`}</div>
+    {failure && <div role="alert" className="error-box"><p>{failure}</p>{conflict && <button onClick={() => { if (!dirty || window.confirm('Reload and discard unsaved changes?')) reload(); }}>Reload saved case</button>}</div>}
     <div id={presentation ? 'phone-case-inputs' : undefined} tabIndex={presentation ? -1 : undefined}>
     {presentation && <div className="chat-prompt"><span><MessageCircleMore size={19} aria-hidden="true" /></span><p>I’ve attached the payment details. Did you expect this credit, and has anyone asked you to return it?</p></div>}
     <form className="panel intake" onSubmit={e => { e.preventDefault(); void perform(async () => { const next = await json<Investigation>(`${base}/context`, 'PATCH', { ...context, expected_revision: data.input_revision }); setData(next); setContext(next.context); }, 'Answers saved.'); }}>

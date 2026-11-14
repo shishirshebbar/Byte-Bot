@@ -1,9 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Bell, Bot, Check, CircleUserRound, LayoutGrid, ListTodo, Plug, ShieldCheck, Undo2, X } from 'lucide-react';
+import { Bell, Bot, Check, CircleUserRound, LayoutGrid, Link2, ListTodo, Plug, ShieldCheck, Undo2, X } from 'lucide-react';
 import { json, request } from './api';
 import type { AgentState, Assessment } from './investigation-types';
+import { VerdictBanner } from './story-ui';
 import './console.css';
+
+const TOAST: [RegExp, string][] = [
+  [/decision":"approve/, 'Approved. Byte Bot is carrying out the step on the simulated system.'],
+  [/decision":"reject/, 'Rejected. The customer will not see this step run.'],
+  [/^\/resolve/, 'Case resolved and recorded in the audit chain.'],
+  [/^\/assign/, 'Assigned to you.'], [/^\/notes/, 'Note saved (credentials redacted).'], [/\/undo$/, 'Step undone on the simulated system.'],
+];
+
+function AuditChain({ ledger }: { ledger: { verified: boolean; entries: number; head: string | null } }) {
+  const blocks = Math.min(ledger.entries, 9);
+  return <div className={`audit-chain ${ledger.verified ? 'is-ok' : 'is-broken'}`} title="Every console and agent action is hash-chained per case">
+    <span className="chain-label"><Link2 size={14} aria-hidden="true" />Audit chain</span>
+    <ol aria-hidden="true">{Array.from({ length: blocks }, (_, i) => <li key={i} style={{ ['--i' as string]: i }} />)}{ledger.entries > blocks && <li className="more">+{ledger.entries - blocks}</li>}</ol>
+    <span className="chain-meta">{ledger.entries} linked entries{ledger.head ? ` · head ${ledger.head.slice(0, 10)}…` : ''}</span>
+  </div>;
+}
 
 type Reason = { code: string; label: string };
 type Escalation = { id: string; investigation_id: string; priority: 'urgent' | 'high' | 'normal'; state: 'open' | 'assigned' | 'resolved';
@@ -56,11 +73,17 @@ function CaseView({ id, onChanged }: { id: string; onChanged: () => void }) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+  useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 3500); return () => clearTimeout(timer); }, [toast]);
   const load = useCallback(() => request<Detail>(`/console/cases/${id}`).then(setDetail).catch(e => setError(e.message)), [id]);
   useEffect(() => { setDetail(undefined); void load(); const timer = setInterval(() => void load(), 4000); return () => clearInterval(timer); }, [load]);
   async function act(path: string, body: unknown = {}) {
     setBusy(true); setError('');
-    try { setDetail(await json<Detail>(`/console/cases/${id}${path}`, 'POST', body)); onChanged(); }
+    try {
+      setDetail(await json<Detail>(`/console/cases/${id}${path}`, 'POST', body)); onChanged();
+      const key = path + ' ' + JSON.stringify(body);
+      setToast(TOAST.find(([pattern]) => pattern.test(key) || pattern.test(path))?.[1] ?? 'Saved.');
+    }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -86,7 +109,10 @@ function CaseView({ id, onChanged }: { id: string; onChanged: () => void }) {
         <span><b>Payment</b> {t.status} · {t.reference}</span>
       </div>
     </header>
+    {result?.headline && <VerdictBanner headline={result.headline} />}
+    <AuditChain ledger={detail.ledger} />
     {error && <p className="console-error" role="alert">{error}</p>}
+    {toast && <p className="console-toast" role="status">{toast}</p>}
     <div className="case-grid">
       <section className="console-card" aria-label="Case management">
         <h2>Case management</h2>

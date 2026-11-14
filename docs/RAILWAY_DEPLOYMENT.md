@@ -21,6 +21,7 @@ BYTEBOT_EXTRACTION_MODE=sarvam
 SARVAM_API_KEY=sk_xxxxx          # Copy from your .env
 SARVAM_CHAT_MODEL=sarvam-105b-conversations
 COOKIE_SECURE=true
+BYTEBOT_CORS_ORIGINS=https://bytebot-frontend.railway.app
 OCR_MODEL_DIR=.cache/easyocr
 GEMINI_API_KEY=                  # Leave blank
 GEMINI_MODEL=                    # Leave blank
@@ -75,7 +76,7 @@ GEMINI_MODEL=                    # Leave blank
    ```bash
    # Backend health check
    curl https://bytebot-api.railway.app/api/v1/health
-   
+
    # Should return: {"status":"ok","database":"connected"}
    ```
 
@@ -91,6 +92,7 @@ GEMINI_MODEL=                    # Leave blank
    - Backend: `api.yourdomain.com`
    - Frontend: `yourdomain.com`
 3. Update DNS records in your domain provider (CNAME to Railway)
+4. Set `BYTEBOT_CORS_ORIGINS` on the backend to the frontend origin, without a trailing slash.
 
 ---
 

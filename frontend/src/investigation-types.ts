@@ -26,3 +26,10 @@ export type AgentState = { policy_version: string; outcome: 'needs_customer_info
 export type Escalation = { id: string; source: 'agent' | 'customer'; priority: 'urgent' | 'high' | 'normal'; state: 'open' | 'assigned' | 'resolved'; reasons: { code: string; label: string }[]; sla_due_at: string; created_at: string; updated_at: string };
 export type Analysis = { run_id: string; input_revision: number; state: 'queued' | 'running' | 'complete' | 'failed'; stage: string; error_code: string | null; notices: string[]; result: Assessment | null; prepare_report: boolean; report_id: string | null; agent?: AgentState | null; duration_seconds?: number | null };
 export type Investigation = { id: string; transaction_id: string; transaction: Transaction; input_revision: number; case_status: CaseStatus; status_revision: number; context: Context; evidence: Evidence[]; analysis: Analysis | null; escalation?: Escalation | null };
+export type ClaimResult = {
+  status: 'not_found' | 'not_completed' | 'verified' | 'ambiguous' | 'need_amount';
+  claimed_amount_paise: number | null;
+  matches: { transaction_id: string; amount_paise: number; sender_name: string; sender_vpa: string; status: string; occurred_at: string }[];
+  headline: Headline; story: StoryStep[];
+  sender?: string | null;
+};

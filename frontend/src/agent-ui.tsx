@@ -15,7 +15,7 @@ const OUTCOME_COPY: Record<string, string> = {
   actions_completed: 'Done. Here is what I did on your behalf.',
   resolved: 'No action is needed. I found no strong warning signs in what you shared.',
 };
-const STATE_LABEL: Record<AgentAction['state'], string> = {
+export const STATE_LABEL: Record<AgentAction['state'], string> = {
   approved: 'Approved', awaiting_consent: 'Needs your consent', awaiting_human: 'Waiting for a person',
   denied: 'Not allowed by policy', declined: 'You declined', executed: 'Done', failed: 'Failed, a person will follow up',
   compensated: 'Undone', revoked: 'Cancelled after your case changed',
@@ -113,7 +113,7 @@ const LEVEL: Record<Assessment['category'], number> = { 'High concern': 3, 'Need
 type Factor = { id: string; label: string; weight: number; status: string; sources: string[]; detail: string };
 type Graph = { nodes: { id: string; kind: string; identifier: string; label: string }[]; edges: { source: string; target: string; relation: string }[]; limitations?: string };
 
-function Gauge({ value, tone }: { value: number; tone: string }) {
+export function Gauge({ value, tone }: { value: number; tone: string }) {
   const radius = 44, circumference = 2 * Math.PI * radius, dash = (Math.min(value, 100) / 100) * circumference;
   return <svg className={`gauge tone-${tone}`} viewBox="0 0 110 110" role="img" aria-label={`Risk score ${value} out of 100`}>
     <circle cx="55" cy="55" r={radius} className="gauge-track" />
@@ -122,7 +122,7 @@ function Gauge({ value, tone }: { value: number; tone: string }) {
   </svg>;
 }
 
-export function FraudGraph({ caseId }: { caseId: string }) {
+export function FraudGraph({ caseId, variant = 'phone', senderVpa }: { caseId: string; variant?: 'phone' | 'stage'; senderVpa?: string }) {
   const [graph, setGraph] = useState<Graph>();
   useEffect(() => {
     const controller = new AbortController();
@@ -130,26 +130,39 @@ export function FraudGraph({ caseId }: { caseId: string }) {
     return () => controller.abort();
   }, [caseId]);
   if (!graph || graph.nodes.length === 0) return null;
+  const stage = variant === 'stage';
   const columns: Record<string, number> = { vpa: 0, account: 0, phone: 1, device: 1, incident: 2 };
   const groups: Record<number, typeof graph.nodes> = { 0: [], 1: [], 2: [], 3: [] };
   // Accounts that received repayments after an incident sit to the right of the incidents.
   const recipients = new Set(graph.edges.filter(edge => edge.relation === 'repaid_to').map(edge => edge.target));
   graph.nodes.forEach(node => groups[recipients.has(node.id) ? 3 : columns[node.kind] ?? 1].push(node));
-  const width = groups[3].length ? 445 : 330;
-  const height = Math.max(...Object.values(groups).map(group => group.length)) * 62 + 20;
+  // Drop empty middle columns on the stage so the graph uses the full width.
+  const used = Object.keys(groups).map(Number).filter(column => groups[column].length || !stage);
+  const step = stage ? 150 : 115;
+  const left = stage ? 70 : 50;
+  const width = stage ? left * 2 + step * (used.length - 1) : groups[3].length ? 445 : 330;
+  const height = Math.max(...Object.values(groups).map(group => group.length)) * (stage ? 74 : 62) + (stage ? 34 : 20);
   const position: Record<string, { x: number; y: number }> = {};
-  Object.entries(groups).forEach(([column, nodes]) => nodes.forEach((node, index) => {
-    position[node.id] = { x: 50 + Number(column) * 115, y: (height / (nodes.length + 1)) * (index + 1) };
+  used.forEach((column, slot) => groups[column].forEach((node, index) => {
+    position[node.id] = { x: left + (stage ? slot : column) * step, y: (height / (groups[column].length + 1)) * (index + 1) - (stage ? 8 : 0) };
   }));
-  return <section className="fraud-graph" aria-label="Fraud intelligence graph">
-    <h3>Simulated fraud graph</h3>
+  const radius = stage ? 15 : 13;
+  const incidents = graph.nodes.filter(node => node.kind === 'incident').length;
+  return <section className={`fraud-graph fraud-graph-${variant}`} aria-label="Fraud intelligence graph">
+    <h3>{stage ? 'Fraud network around the sender' : 'Simulated fraud graph'}</h3>
     <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${graph.nodes.length} linked entities in the simulated fraud graph`}>
-      {graph.edges.map(edge => <line key={edge.source + edge.target} x1={position[edge.source].x} y1={position[edge.source].y} x2={position[edge.target].x} y2={position[edge.target].y} className="graph-edge" />)}
-      {graph.nodes.map(node => <g key={node.id} className={`graph-node node-${node.kind}`} transform={`translate(${position[node.id].x} ${position[node.id].y})`}>
-        <circle r="13" /><text y="27">{node.kind === 'incident' ? node.identifier.replace('SYNTHETIC-INCIDENT-', 'Incident ') : node.identifier}</text>
-        <text y="38" className="graph-kind">{node.label}</text>
+      {graph.edges.map((edge, index) => <line key={edge.source + edge.target} pathLength={1} style={{ ['--i' as string]: index }}
+        x1={position[edge.source].x} y1={position[edge.source].y} x2={position[edge.target].x} y2={position[edge.target].y}
+        className={`graph-edge edge-${edge.relation}`} />)}
+      {graph.nodes.map((node, index) => <g key={node.id} style={{ ['--i' as string]: index }}
+        className={`graph-node node-${node.kind}${recipients.has(node.id) ? ' node-recipient' : ''}${node.identifier === senderVpa ? ' is-sender' : ''}`}
+        transform={`translate(${position[node.id].x} ${position[node.id].y})`}>
+        <circle r={radius} /><text y={radius + (stage ? 15 : 14)}>{node.kind === 'incident' ? node.identifier.replace('SYNTHETIC-INCIDENT-', 'Incident ') : node.identifier}</text>
+        {(!stage || node.kind !== 'incident') && <text y={radius + (stage ? 29 : 25)} className="graph-kind">{node.label}</text>}
+        <title>{node.label}</title>
       </g>)}
     </svg>
+    {stage && <p className="graph-caption"><b>{incidents}</b> reported incident{incidents === 1 ? '' : 's'} · <b>{recipients.size}</b> repayment recipient{recipients.size === 1 ? '' : 's'} · a same-ID match gives no reassurance</p>}
     <p className="risk-note">{graph.limitations}</p>
   </section>;
 }

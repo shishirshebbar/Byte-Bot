@@ -106,20 +106,18 @@ export function ResultsPage() {
       setBusy(false);
     }
   }
-  const summary = result && <section className={`panel result-summary ${result.category === 'High concern' ? 'concern' : ''}`} aria-label="Assessment">
+  const summary = result && <section className={`panel result-summary ${result.category === 'High concern' ? 'concern' : ''}${presentation ? ' is-compact' : ''}`} aria-label="Assessment">
     <div className="section-body"><div className="eyebrow">{result.provider_mode === 'fixture' ? 'SYNTHETIC EXTRACTION FIXTURE' : 'RULE-BASED ASSESSMENT'}</div>
       <h2>{result.category}</h2><p>{result.summary}</p><p className="primary-guidance">{result.recommendations[0]}</p>
-      {presentation && data?.context.already_sent_money !== 'yes' &&
-        result.recommendations.slice(1, -1).map(text => <p key={text}>{text}</p>)}
+
       <p className="field-help">Generated {date(result.generated_at)} IST · {result.rule_version} · Evidence extraction: {result.extraction_status}</p>
     </div>
   </section>;
   const warning = result?.findings.some(f => dangerous.has(f.kind)) && <aside className="guidance safety-warning" role="alert"><h2>Safety warning</h2><p>Never disclose credentials, enable remote access, or approve an unexpected collect request.</p><p>These warnings remain relevant even when the payment is pending or failed.</p></aside>;
-  const agentViews = data && <>
-    <AgentPanel data={data} onChange={next => { setData(next); presentation?.showCase(next); setAttempt(value => value + 1); }} />
-    <RiskOverview data={data} />
-  </>;
+  const agentPanel = data && <AgentPanel data={data} onChange={next => { setData(next); presentation?.showCase(next); setAttempt(value => value + 1); }} />;
+  const agentViews = data && <>{agentPanel}<RiskOverview data={data} /></>;
   const evidenceLink = (reference: string) => screen(`/investigations/${id}#evidence-${reference}`);
+  const lists = data && result && <ResultLists data={data} />;
   return <><Link className="back" to={screen(`/investigations/${id}`)}>← Edit saved context and evidence</Link>
     <div className="eyebrow">BYTE BOT · ANALYSIS</div><h1>Investigation results</h1>
     {error && <div role="alert" className="error-box"><p>{error}</p><button onClick={() => setAttempt(v => v + 1)}>Reload saved case</button></div>}
@@ -133,11 +131,10 @@ export function ResultsPage() {
       {result && run && <>
         {presentation ? <>
           <p className="results-payment">{money(data.transaction)} · {data.transaction.sender_name} <Status value={data.transaction.status} /></p>
-          <VerdictBanner headline={result?.headline} />
+          <VerdictBanner headline={result?.headline} compact />
           {summary}
           {warning}
-          <StoryChain steps={result?.story} />
-          {agentViews}
+          {agentPanel}
           <section className="panel resolution-actions" aria-label="Private incident report"><div className="section-body">
             <h2>Incident report</h2>
             {run.report_id ? <>
@@ -151,6 +148,10 @@ export function ResultsPage() {
               <button disabled={busy} onClick={() => void reportAction('prepare')}>{busy ? 'Preparing report…' : run.prepare_report ? 'Retry report' : 'Prepare private report'}</button>
             </>}
           </div></section>
+          <StatusControl id={data.id} value={data} onChange={next => setData(current => current?.id === data.id ? { ...current, case_status: next.case_status, status_revision: next.status_revision } : current)} />
+          <p><Link to={screen('/incidents')}>Track case in My Incidents</Link></p>
+          <details className="result-details">
+          <summary>Details: findings, sources and limitations</summary>
           {findings.length > 0 && <section className="panel resolution-findings" aria-label="What shaped the assessment">
             <div className="panel-heading"><h2>What shaped the assessment</h2></div>
             <ul>
@@ -163,8 +164,8 @@ export function ResultsPage() {
               </li>)}
             </ul>
           </section>}
-          <StatusControl id={data.id} value={data} onChange={next => setData(current => current?.id === data.id ? { ...current, case_status: next.case_status, status_revision: next.status_revision } : current)} />
-          <p><Link to={screen('/incidents')}>Track case in My Incidents</Link></p>
+          {lists}
+          </details>
         </> : <>
           <div className="actions report-actions"><button disabled={busy} onClick={() => void reportAction('prepare')}>{busy ? 'Preparing report…' : 'Generate / view report'}</button><Link to={screen('/incidents')}>Track case in My Incidents</Link></div>
           <VerdictBanner headline={result?.headline} />
@@ -172,13 +173,21 @@ export function ResultsPage() {
           {warning}
           <StoryChain steps={result?.story} />
           {agentViews}
+          {lists}
         </>}
+      </>}
+    </>}
+    <p className="footnote">Reports stay in your demo case until you choose to download them. You decide whether to contact your bank or share the report.</p>
+  </>;
+}
+function ResultLists({ data }: { data: Investigation }) {
+  const screen = useScreenPath();
+  const result = data.analysis!.result!;
+  const id = data.id;
+  return <>
         <section className="panel"><div className="panel-heading"><h2>Recommended next steps</h2></div><div className="section-body"><ol>{result.recommendations.map(text => <li key={text}>{text}</li>)}</ol></div></section>
         <section className="panel" aria-label="Findings and sources"><div className="panel-heading"><h2>Findings and sources</h2></div><div className="section-body">{result.findings.map((f, i) => <article className="finding" key={i}><h3>{f.text}</h3><p className="field-help">Source: {f.source}</p>{f.quote && <blockquote>{f.quote}</blockquote>}<p className="finding-reference">Reference: {data.evidence.some(e => e.id === f.reference) ? <Link to={screen(`/investigations/${id}#evidence-${f.reference}`)}>Review source evidence</Link> : f.reference} · Rule: {f.rule_id}</p></article>)}</div></section>
         {result.intelligence_matches.length > 0 && <section className="panel"><div className="panel-heading"><h2>Simulated intelligence matches</h2></div><div className="section-body">{result.intelligence_matches.map((m, i) => <article key={i}><h3>{m.identifier}</h3><p>{m.source_label} · {m.match_type} · {date(m.reported_at)} IST</p><p>{m.incident_reference}: {m.limitations}</p></article>)}</div></section>}
         <section className="panel"><div className="panel-heading"><h2>Unknowns and limitations</h2></div><div className="section-body"><ul>{result.limitations.map(text => <li key={text}>{text}</li>)}</ul></div></section>
-      </>}
-    </>}
-    <p className="footnote">Reports stay in your demo case until you choose to download them. You decide whether to contact your bank or share the report.</p>
   </>;
 }

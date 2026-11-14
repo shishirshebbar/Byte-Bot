@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CircleCheck, CircleX, ShieldCheck } from 'lucide-react';
+import { CircleCheck, CircleX, Info, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { get } from './api';
 import './console.css';
 
@@ -23,6 +23,28 @@ function Tile({ label, value, note }: { label: string; value: string; note?: str
   return <article className="stat-tile"><span>{label}</span><strong>{value}</strong>{note && <small>{note}</small>}</article>;
 }
 
+function Hero({ label, value, note }: { label: string; value: string; note: string }) {
+  return <article className={`hero-kpi${value.length > 6 ? ' is-long' : ''}`}><strong>{value}</strong><span>{label}</span><small>{note}</small></article>;
+}
+
+const TONE: Record<string, { tone: string; icon: typeof Info }> = {
+  'High concern': { tone: 'danger', icon: ShieldAlert }, 'Needs verification': { tone: 'caution', icon: TriangleAlert },
+  'No strong indicators found': { tone: 'safe', icon: ShieldCheck }, 'Unable to assess': { tone: 'info', icon: Info },
+};
+
+function Matrix({ rows }: { rows: Row[] }) {
+  return <ul className="scenario-matrix" aria-label="Scenario results">{rows.map((row, i) => {
+    const ok = row.category === row.expected_category && row.escalation.join() === row.expected_escalation.join() && row.policy_violations.length === 0;
+    const { tone, icon: Icon } = TONE[row.category] || TONE['Unable to assess'];
+    return <li key={row.scenario} className={`cell tone-${tone}`} style={{ ['--i' as string]: i }}>
+      <div className="cell-head"><b>{row.scenario}</b><Pass ok={ok} /></div>
+      <p>{row.title}</p>
+      <span className="cell-category"><Icon size={13} aria-hidden="true" />{row.category}</span>
+      <small>{OUTCOME[row.outcome] || row.outcome}{row.escalation.length ? ' · handoff' : ''}</small>
+    </li>;
+  })}</ul>;
+}
+
 function Pass({ ok, yes = 'Pass', no = 'Differs' }: { ok: boolean; yes?: string; no?: string }) {
   return <span className={`pass-chip ${ok ? 'ok' : 'bad'}`}>{ok ? <CircleCheck size={14} aria-hidden="true" /> : <CircleX size={14} aria-hidden="true" />}{ok ? yes : no}</span>;
 }
@@ -30,7 +52,7 @@ function Pass({ ok, yes = 'Pass', no = 'Differs' }: { ok: boolean; yes?: string;
 export function MetricsPage() {
   const [data, setData] = useState<Metrics>();
   const [error, setError] = useState('');
-  const [mode, setMode] = useState('sarvam');
+  const [mode, setMode] = useState<string>();
   useEffect(() => {
     const controller = new AbortController();
     const load = () => get<Metrics>('/metrics', controller.signal).then(setData).catch(e => !controller.signal.aborted && setError(e.message));
@@ -38,7 +60,9 @@ export function MetricsPage() {
     const timer = setInterval(load, 5000);
     return () => { controller.abort(); clearInterval(timer); };
   }, []);
-  const evaluation = data?.evaluation[mode] || data?.evaluation.fixture || data?.evaluation.sarvam;
+  // Default to the most recent evaluation run; the presenter can switch modes.
+  const latest = data ? Object.values(data.evaluation).sort((a, b) => b.generated_at.localeCompare(a.generated_at))[0] : undefined;
+  const evaluation = (mode && data?.evaluation[mode]) || latest;
   const done = data ? Object.values(data.actions_completed).reduce((a, b) => a + b, 0) : 0;
   return <div className="console metrics-page"><main className="console-main">
     <header className="metrics-head"><Link to="/" className="rail-logo" aria-label="Back to the presentation"><ShieldCheck size={22} /></Link>
@@ -51,16 +75,20 @@ export function MetricsPage() {
         <label className="mode-select">Extraction<select aria-label="Evaluation extraction mode" value={evaluation.extraction_mode} onChange={e => setMode(e.target.value)}>
           {Object.keys(data!.evaluation).map(key => <option key={key} value={key}>{key === 'sarvam' ? 'Live Sarvam AI' : 'Deterministic fixture'}</option>)}
         </select></label></div>
-      <div className="stat-grid">
-        <Tile label="Handled without a person" value={pct(evaluation.handled_without_person)} note="Escalation only when policy requires it" />
-        <Tile label="Escalation precision / recall" value={`${pct(evaluation.escalation_precision)} / ${pct(evaluation.escalation_recall)}`} note="Against expected handoffs" />
-        <Tile label="Risk category accuracy" value={pct(evaluation.category_accuracy)} note="Python rules decide the category" />
-        <Tile label="Policy violations" value={String(evaluation.policy_violations)} note="Steps taken without the required consent or approval" />
+      <div className="hero-band">
+        <Hero label="Risk category accuracy" value={pct(evaluation.category_accuracy)} note="Python rules decide every category" />
+        <Hero label="Escalation precision / recall" value={`${pct(evaluation.escalation_precision)} / ${pct(evaluation.escalation_recall)}`} note="Hands off exactly the cases it should" />
+        <Hero label="Handled without a person" value={pct(evaluation.handled_without_person)} note="Escalation only when policy requires it" />
+        <Hero label="Policy violations" value={String(evaluation.policy_violations)} note="No step ran without the required consent or approval" />
+      </div>
+      <div className="stat-grid compact">
         <Tile label="Median analysis time" value={`${evaluation.median_analysis_seconds}s`} note={evaluation.extraction_mode === 'sarvam' ? 'Live Sarvam extraction' : 'Fixture extraction'} />
         <Tile label="Median customer taps" value={String(evaluation.median_customer_taps)} note="Approve once, then consent per step" />
         <Tile label="Prompt injection" value={evaluation.injection_contained ? 'Contained' : 'Not contained'} note="Category kept, case escalated" />
         <Tile label="Reports prepared" value={`${evaluation.reports_ready}/${evaluation.scenarios}`} note="Private, user-owned downloads" />
       </div>
+      <Matrix rows={evaluation.rows} />
+      <details className="table-view"><summary>Table view</summary>
       <div className="table-wrap"><table className="eval-table">
         <caption>Per-scenario results · run {new Date(evaluation.generated_at).toLocaleString('en-IN')}</caption>
         <thead><tr><th scope="col">Scenario</th><th scope="col">Category</th><th scope="col">Score</th><th scope="col">Byte Bot outcome</th><th scope="col">Handoff reason</th><th scope="col">Taps</th><th scope="col">Steps done</th><th scope="col">Check</th></tr></thead>
@@ -70,11 +98,12 @@ export function MetricsPage() {
           <td><Pass ok={row.category === row.expected_category && row.escalation.join() === row.expected_escalation.join() && row.policy_violations.length === 0} /></td>
         </tr>)}</tbody>
       </table></div>
+      </details>
       <p className="muted">Re-run with <code>backend/tests/eval_teammate.py</code> (add <code>--sarvam</code> for live extraction).</p>
     </section>}
     {data && <section aria-label="Live demo activity">
       <div className="section-title"><h2>Live demo activity</h2><span className="muted">{data.scope}</span></div>
-      <div className="stat-grid">
+      <div className="stat-grid compact">
         <Tile label="Cases analyzed" value={String(data.cases_analyzed)} />
         <Tile label="Handled without a person" value={pct(data.autonomy_rate)} note={`${data.escalated} escalated`} />
         <Tile label="Steps completed" value={String(done)} note={Object.entries(data.actions_completed).map(([actor, n]) => `${n} by ${actor === 'agent' ? 'Byte Bot' : actor === 'human' ? 'support agent' : 'customer consent'}`).join(' · ') || 'None yet'} />
