@@ -8,7 +8,10 @@ export type Context = {
 };
 export type Evidence = { id: string; type: 'message' | 'call_summary' | 'screenshot' | 'voice_note'; review_state: 'confirmed' | 'needs_review' | 'ocr_failed'; ocr_text: string | null; confirmed_text: string | null; notice: string | null };
 export type Finding = { kind: string; text: string; source: string; reference: string; quote: string | null; rule_id: string };
+export type Headline = { tone: 'danger' | 'caution' | 'safe' | 'info'; label: string; title: string; message: string };
+export type StoryStep = { id: string; question: string; status: 'pass' | 'warn' | 'fail'; answer: string };
 export type Assessment = {
+  headline?: Headline | null; story?: StoryStep[];
   category: 'High concern' | 'Needs verification' | 'No strong indicators found' | 'Unable to assess';
   summary: string; findings: Finding[]; limitations: string[]; recommendations: string[];
   rule_version: string; triggered_rules: string[]; generated_at: string; provider_mode: string; extraction_status: string;

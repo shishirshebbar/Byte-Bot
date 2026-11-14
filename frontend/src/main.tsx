@@ -16,6 +16,7 @@ import { useScreenPath } from './screen-path';
 import { PhoneHistory } from './phone-history';
 import { ConsolePage } from './console';
 import { MetricsPage } from './metrics';
+import { ClaimCheckPage } from './story-ui';
 
 function useData<T>(path: string, refresh = 0) {
   const [data, setData] = useState<T>();
@@ -97,6 +98,7 @@ const screens: RouteObject[] = [
   { path: 'investigations/:id/results', element: <ResultsPage /> },
   { path: 'investigations/:id/report', element: <ReportPage /> },
   { path: 'incidents', element: <IncidentsPage /> },
+  { path: 'check-payment', element: <ClaimCheckPage /> },
   { path: '*', element: <MissingPage /> },
 ];
 const router = createBrowserRouter([

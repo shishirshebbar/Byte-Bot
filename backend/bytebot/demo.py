@@ -58,12 +58,23 @@ def load(scenario_id: str, request: Request, response: Response,
             text = SCENARIOS[scenario_id]['text']
             if text and payload.evidence_mode == 'text':
                 evidence = TextEvidence(type='message', text=text, expected_revision=case['input_revision'])
-                add_evidence(conn, case, evidence.type, evidence.text,
-                             {'request_markers': evidence._request_markers})
+                metadata = {'request_markers': evidence._request_markers}
+                if SCENARIOS[scenario_id].get('qr'):
+                    # The synthetic refund QR is decoded for real, exactly like an upload.
+                    metadata['qr_payments'] = demo_qr(SCENARIOS[scenario_id]['qr'])
+                add_evidence(conn, case, evidence.type, evidence.text, metadata)
             state = snapshot(conn, owned_case(conn, owner, case['id']))
     response.status_code = 201 if created else 200
     return {'scenario_id': scenario_id, 'transaction_id': transaction['id'],
             'investigation': state, 'created': created}
+
+
+def demo_qr(name):
+    from pathlib import Path
+    from PIL import Image
+    from . import qr
+    with Image.open(Path(__file__).parent / 'demo_assets' / name) as image:
+        return qr.payment_intents(image.convert('RGB'))
 
 
 def reset_session(conn, owner):

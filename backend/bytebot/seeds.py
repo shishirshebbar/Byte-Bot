@@ -17,12 +17,14 @@ TEMPLATES += [
 ]
 # Agent scenarios are copied only when a presenter loads them, so the default
 # history keeps its eight transactions.
+SCENARIO_SENDERS = {'M': ('Rahul Mehta', 'rahul.mehta.demo@upi'), 'N': ('Rahul Mehta', 'rahul.mehta.demo@upi'),
+                    'O': ('Rahul Kumar', 'rahul.demo@upi')}
 ON_DEMAND_TEMPLATES = [
-    (f'scenario-{key.lower()}', 'incoming', amount, 'INR', f'Scenario {key} sender',
-     'aarav.demo@upi', 'recipient.demo@upi', f'2026-11-09T09:0{index}:00+05:30',
+    (f'scenario-{key.lower()}', 'incoming', amount, 'INR', *SCENARIO_SENDERS.get(key, (f'Scenario {key} sender', 'aarav.demo@upi')),
+     'recipient.demo@upi', f'2026-11-09T09:0{index}:00+05:30',
      'successful', f'DEMOSCENARIO{key}', 'mock')
-    for index, (key, amount) in enumerate([('F', 500000), ('G', 500000), ('H', 500000),
-                                           ('I', 500000), ('J', 500000), ('K', 7500000), ('L', 500000)])
+    for index, (key, amount) in enumerate([('F', 500000), ('G', 500000), ('H', 500000), ('I', 500000), ('J', 500000),
+                                           ('K', 7500000), ('L', 500000), ('M', 500000), ('N', 500000), ('O', 500000)])
 ]
 DEFAULT_KEYS = [row[0] for row in TEMPLATES]
 

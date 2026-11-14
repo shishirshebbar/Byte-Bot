@@ -149,3 +149,47 @@
 .graph-node.node-incident circle { fill: var(--bb-danger); }
 .graph-node text { font-size: 7.5px; text-anchor: middle; fill: var(--bb-ink); font-weight: 700; }
 .graph-node .graph-kind { font-size: 6.5px; fill: var(--bb-muted); font-weight: 500; }
+
+/* Story verification: verdict banner, six-question chain, claimed-payment check. */
+.claim-card { background: linear-gradient(135deg, var(--bb-navy), #24406e); }
+.verdict { display: flex; gap: 12px; padding: 14px; margin: 12px 0; border-radius: var(--bb-radius); border: 1px solid var(--bb-line); background: var(--bb-surface); }
+.verdict-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; color: #fff; background: var(--bb-muted); }
+.verdict strong { display: block; font-size: .95rem; line-height: 1.3; color: var(--bb-ink); }
+.verdict p { margin: 4px 0 0; font-size: .78rem; line-height: 1.45; color: var(--bb-ink); }
+.verdict-label { display: inline-block; font-size: .64rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; color: var(--bb-muted); }
+.verdict-danger { background: var(--bb-danger-soft); border-color: #f3c4c8; }
+.verdict-danger .verdict-icon { background: var(--bb-danger); }
+.verdict-danger .verdict-label { color: var(--bb-danger); }
+.verdict-caution { background: var(--bb-warning-soft); border-color: #f2d9a4; }
+.verdict-caution .verdict-icon { background: var(--bb-warning); }
+.verdict-caution .verdict-label { color: #9a6200; }
+.verdict-safe { background: var(--bb-success-soft); border-color: #b9e3d1; }
+.verdict-safe .verdict-icon { background: var(--bb-success); }
+.verdict-safe .verdict-label { color: #0b7a55; }
+.verdict-info { background: var(--bb-primary-soft); }
+.verdict-info .verdict-icon { background: var(--bb-primary); }
+.story-chain { margin: 12px 0; padding: 12px 14px; border-radius: var(--bb-radius); background: var(--bb-surface); border: 1px solid var(--bb-line); }
+.story-chain h3 { margin: 0 0 8px; font-size: .82rem; color: var(--bb-ink); }
+.story-chain ol { list-style: none; margin: 0; padding: 0; counter-reset: story; }
+.story-chain li { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--bb-line); }
+.story-chain li:first-child { border-top: 0; }
+.story-chain li > svg { flex: none; margin-top: 1px; }
+.story-chain strong { display: block; font-size: .78rem; color: var(--bb-ink); }
+.story-chain small { display: block; font-size: .72rem; line-height: 1.4; color: var(--bb-muted); margin-top: 2px; }
+.story-pass > svg { color: var(--bb-success); }
+.story-warn > svg { color: var(--bb-warning); }
+.story-fail > svg { color: var(--bb-danger); }
+.claim-check h1 { margin-bottom: 4px; }
+.claim-intro { font-size: .8rem; color: var(--bb-muted); line-height: 1.45; }
+.claim-check form { display: grid; gap: 10px; }
+.claim-check textarea, .claim-check input { width: 100%; box-sizing: border-box; font: inherit; font-size: .82rem; }
+.claim-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+.claim-matches { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.claim-matches li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: var(--bb-radius-sm); background: var(--bb-surface); border: 1px solid var(--bb-line); }
+.claim-matches strong { display: block; font-size: .8rem; }
+.claim-matches small { font-size: .7rem; color: var(--bb-muted); }
+.button-link { flex: none; font-size: .74rem; font-weight: 700; color: #fff; background: var(--bb-primary); border-radius: 999px; padding: 6px 12px; text-decoration: none; }
+.three-worlds { margin-top: 12px; border: 1px dashed var(--bb-line); border-radius: var(--bb-radius-sm); padding: 10px; }
+.three-worlds legend { font-weight: 750; font-size: .82rem; padding: 0 4px; }
+.three-worlds .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.three-worlds button { text-align: left; }

@@ -40,6 +40,13 @@ GRAPH_NODES = [
     ('incident-002', 'incident', 'SYNTHETIC-INCIDENT-002', 'Reported repayment scam'),
     ('incident-003', 'incident', 'SYNTHETIC-INCIDENT-003', 'Reported repayment scam'),
     ('incident-004', 'incident', 'SYNTHETIC-INCIDENT-004', 'Reported collect-request scam'),
+    # Case 4: a sender whose credits were followed by rapid repayment requests to other accounts.
+    ('vpa-rahul', 'vpa', 'rahul.demo@upi', 'Sender UPI ID'),
+    ('incident-005', 'incident', 'SYNTHETIC-INCIDENT-005', 'Credit followed by a rapid repayment request'),
+    ('incident-006', 'incident', 'SYNTHETIC-INCIDENT-006', 'Credit followed by a rapid repayment request'),
+    ('incident-007', 'incident', 'SYNTHETIC-INCIDENT-007', 'Reported mistaken-credit scam'),
+    ('vpa-payback', 'vpa', 'payback.demo@upi', 'Repayment recipient'),
+    ('vpa-returnhelp', 'vpa', 'return.help@upi', 'Repayment recipient'),
 ]
 GRAPH_EDGES = [
     ('e1', 'vpa-refund-demo', 'phone-ring', 'registered_with'),
@@ -48,6 +55,12 @@ GRAPH_EDGES = [
     ('e4', 'phone-ring', 'incident-002', 'reported_in'),
     ('e5', 'phone-ring', 'incident-003', 'reported_in'),
     ('e6', 'device-ring', 'incident-004', 'reported_in'),
+    ('e7', 'vpa-rahul', 'incident-005', 'sent_credit_in'),
+    ('e8', 'vpa-rahul', 'incident-006', 'sent_credit_in'),
+    ('e9', 'vpa-rahul', 'incident-007', 'sent_credit_in'),
+    ('e10', 'incident-005', 'vpa-payback', 'repaid_to'),
+    ('e11', 'incident-006', 'vpa-returnhelp', 'repaid_to'),
+    ('e12', 'incident-007', 'vpa-payback', 'repaid_to'),
 ]
 GRAPH_SOURCE = 'Synthetic fraud-intelligence graph'
 LINK_LIMITATION = 'Simulated graph link only; shared contact details are not proof of guilt.'

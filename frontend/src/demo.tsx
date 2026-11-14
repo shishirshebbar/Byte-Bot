@@ -31,11 +31,11 @@ export function DemoControls({ ready, onReset, onLoad, onBusy, sessionRetry }: {
     });
     return () => controller.abort();
   }, [attempt]);
-  async function load() {
+  async function load(key = selected) {
     setBusy('Loading scenario…'); setError(''); setNotice('');
     onBusy?.(true);
     try {
-      const loaded = await json<{ transaction_id: string; investigation: Investigation }>('/demo/scenarios/' + selected + '/load', 'POST', { evidence_mode: manual ? 'manual' : 'text' });
+      const loaded = await json<{ transaction_id: string; investigation: Investigation }>('/demo/scenarios/' + key + '/load', 'POST', { evidence_mode: manual && key === selected ? 'manual' : 'text' });
       onLoad?.(loaded.investigation);
       navigate(screen('/transactions/' + loaded.transaction_id));
     } catch (e) { setError((e as Error).message); }
@@ -68,6 +68,16 @@ export function DemoControls({ ready, onReset, onLoad, onBusy, sessionRetry }: {
           {!onLoad && <p className="field-help">{loadHelp}</p>}
           <div className="actions"><button onClick={() => void load()}>Load / reopen scenario</button><button className="secondary" onClick={() => void reset()}>Reset demo</button></div>
         </fieldset>
+        {onLoad && catalog.scenarios.some(item => item.id === 'N') && <fieldset className="three-worlds" disabled={!ready || !!busy}>
+          <legend>Three worlds: Rahul says he sent ₹5,000 by mistake</legend>
+          <div className="actions">
+            <button className="secondary" onClick={() => navigate('/check-payment?preset=rahul')}>1. No credit arrived</button>
+            <button className="secondary" onClick={() => void load('M')}>2. Real credit, suspicious request</button>
+            <button className="secondary" onClick={() => void load('N')}>3. Real credit, QR "refund"</button>
+            <button className="secondary" onClick={() => void load('O')}>4. Same UPI ID, suspicious network</button>
+          </div>
+          <p className="field-help">Reset first so world 1 has no credit from Rahul. Worlds 2 to 4 add the genuine credit; then choose Ask Byte Bot.</p>
+        </fieldset>}
         {onLoad && <details className="fixture-details"><summary>{catalog.extraction_mode === 'fixture' ? 'Synthetic fixture mode' : 'Gemini extraction mode'}</summary>
           <p className="field-help">{modeText} Python rules determine every category.</p>
           <p className="field-help">{loadHelp}</p>

@@ -9,6 +9,7 @@ import { StatusControl } from './incidents';
 import { downloadReport } from './report';
 import { highlightedFindings } from './findings';
 import { AgentPanel, RiskOverview } from './agent-ui';
+import { StoryChain, VerdictBanner } from './story-ui';
 
 const stages = [
   ['transaction_context', 'Checking transaction context'],
@@ -16,7 +17,7 @@ const stages = [
   ['risk_investigation', 'Checking simulated intelligence and risk rules'],
   ['incident_resolution', 'Preparing explanations and guidance'],
 ];
-const dangerous = new Set(['credential_request', 'collect_approval', 'remote_access', 'screen_sharing']);
+const dangerous = new Set(['credential_request', 'collect_approval', 'remote_access', 'screen_sharing', 'qr_payment', 'pin_to_receive']);
 
 export function ResultsPage() {
   const navigate = useNavigate();
@@ -132,8 +133,10 @@ export function ResultsPage() {
       {result && run && <>
         {presentation ? <>
           <p className="results-payment">{money(data.transaction)} · {data.transaction.sender_name} <Status value={data.transaction.status} /></p>
+          <VerdictBanner headline={result?.headline} />
           {summary}
           {warning}
+          <StoryChain steps={result?.story} />
           {agentViews}
           <section className="panel resolution-actions" aria-label="Private incident report"><div className="section-body">
             <h2>Incident report</h2>
@@ -164,8 +167,10 @@ export function ResultsPage() {
           <p><Link to={screen('/incidents')}>Track case in My Incidents</Link></p>
         </> : <>
           <div className="actions report-actions"><button disabled={busy} onClick={() => void reportAction('prepare')}>{busy ? 'Preparing report…' : 'Generate / view report'}</button><Link to={screen('/incidents')}>Track case in My Incidents</Link></div>
+          <VerdictBanner headline={result?.headline} />
           {summary}
           {warning}
+          <StoryChain steps={result?.story} />
           {agentViews}
         </>}
         <section className="panel"><div className="panel-heading"><h2>Recommended next steps</h2></div><div className="section-body"><ol>{result.recommendations.map(text => <li key={text}>{text}</li>)}</ol></div></section>

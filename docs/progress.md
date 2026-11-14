@@ -464,3 +464,21 @@ Branch `teammate-phase-0-1`. Plan: [teammate plan](teammate-plan.md).
   - From `backend/`, `bytebot.cli migrate` passed on the demo database.
   - Restarted only the Byte Bot API (8000, `sarvam` mode) and the preview (4174).
   - **Playwright on the 4174 preview with the strict CSP.** Scenario F analysis, the fraud graph, the console with "Ledger verified", and `/metrics` loaded with **no console errors or CSP violations**. Screenshot: `.cache/phase8/console-ledger.png`.
+
+## 2026-11-14 — Story verification: the four cases
+
+- **Complete.** Repositioned Byte Bot as "verifies the story behind a suspicious payment" and closed the gaps from the coverage check.
+  - **Case 1:** `claims.py` adds `POST /api/v1/claim-check`, which searches the owner's own history for the claimed amount and sender. It returns `not_found | not_completed | verified | ambiguous | need_amount` with a verdict and the six-question story. It stores nothing and makes no provider call. The phone has a "Someone says they paid you?" card and a `/check-payment` screen.
+  - **Case 3:** new `qr_payment` and `pin_to_receive` markers (English and Hinglish) in `safety.py`; `qr.py` decodes QR codes in memory with OpenCV (already installed with EasyOCR) and parses `upi://pay`. Screenshot uploads keep only the parsed payee and amount. A new decision, `outgoing-payment-mechanism` (High concern), covers QR, PIN-to-receive, and collect requests. Scenario N uses a synthetic refund QR (`backend/bytebot/demo_assets/refund-qr.png`).
+  - **Case 4:** the simulated graph gains a sender (`rahul.demo@upi`) linked to three incidents and two repayment recipients; Scenario O. Planner adds a bank ticket when a genuine credit is linked to fraud.
+  - **Presentation:** `Assessment` gains display-only `headline` and `story` fields. The phone shows the verdict banner and the six questions. The presenter has "Three worlds" buttons. The fraud graph adds a repayment-recipient column.
+- **Fixes found on the way.** Redaction is not idempotent (evidence is redacted on save and again before extraction), so fixture matching now accepts either pass, and the fixture allow-list includes the redacted text.
+- **Checks.**
+  - `.\.venv\Scripts\python.exe -m pytest backend/tests -q`: **209 passed** across two runs (194 plus 15 `test_demo` cases after updating the scenario list to A–O). The new `test_story.py` (14 cases) covers the four cases, QR parsing, markers and negation, and the six-question story.
+  - `eval_teammate.py` (fixture) across A–O: category accuracy **100%**, escalation precision and recall **100%**, handled without a person **80%**, **0** policy violations, **15/15** reports.
+  - `npm --prefix frontend run build` passed.
+  - From `backend/`, `bytebot.cli seed` added the M–O templates and graph rows to the demo database; the API on 8000 was restarted in `sarvam` mode.
+  - Playwright on the 5174 dev server (live Sarvam): world 1 Scam warning, world 3 Dangerous payment action with the story, world 1 verified after the credit exists, and Case 4 Suspicious network with the fraud graph; **no page errors**.
+- **Not run.** The seven earlier browser suites (they need a fixture-mode API).
+- **Note.** The RBI discussion-paper point from the pitch is not cited in the docs yet; confirm the exact source and wording first.
+- **Environment.** PostgreSQL still runs on **55434** because Windows refused to bind 55433; `.env` points there.

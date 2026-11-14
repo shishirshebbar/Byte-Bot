@@ -60,6 +60,8 @@ class Assessment(BaseModel):
     score_version: str | None = None
     risk_factors: list[dict] = Field(default_factory=list)
     graph_links: list[dict] = Field(default_factory=list)
+    headline: dict | None = None
+    story: list[dict] = Field(default_factory=list)
 
 
 class TraceStep(BaseModel):

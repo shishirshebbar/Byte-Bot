@@ -7,6 +7,17 @@ Complete [setup](setup.md) and open **http://127.0.0.1:5174** (or the production
 
 Keep three tabs ready: the presentation (`/`), the human console (`/console`), and outcomes (`/metrics`).
 
+## Three worlds: the opening hook
+
+Ask the judges: "You've received ₹5,000. Rahul says it was a mistake. What would you do?" Then, in the presenter controls, **Reset demo** and use **Three worlds**:
+
+1. **No credit arrived.** Opens "Did the money really arrive?" with Rahul's message pre-filled. **Check my payments** shows **Scam warning: the claimed payment can't be verified.**
+2. **Real credit, suspicious request** (Scenario M). Ask Byte Bot, then analyze: **Caution: the payment is genuine, but the repayment request can't be verified.**
+3. **Real credit, QR "refund"** (Scenario N). The synthetic refund QR is decoded locally: it would pay ₹5,000 *from* the customer to Rahul. **Dangerous payment action.**
+4. **Same UPI ID, suspicious network** (Scenario O, optional). A polite same-ID request, but the fraud graph links the sender to three reported incidents and two repayment recipients. **Suspicious network: let your bank handle the reversal.**
+
+Rerun world 1 after world 2 to show that the same message is now verified ("The money really arrived"). Each result shows **How Byte Bot checked the story**: the six questions with ✓/⚠/✕ answers.
+
 ## Four-minute AI-teammate pitch
 
 **Problem framing (say before the timer).** Paytm support sees unexpected-credit scams daily: "I sent ₹5,000 by mistake, send it back." Today an assistant can only answer questions. Byte Bot is a teammate that resolves the case. It understands the context, decides, acts on the account with consent, and hands off to a person only when policy says so.
@@ -56,6 +67,9 @@ Keep three tabs ready: the presentation (`/`), the human console (`/console`), a
 | J | Repayment request with no saved answers | Unable to assess | Follow-up questions, then resumes |
 | K | ₹75,000 urgent different-ID request | Needs verification | Escalated (high value); fraud-graph link |
 | L | Hinglish repayment threat | High concern | Hold, block, and bank ticket with consent |
+| M | Rahul: genuine credit, urgent same-ID request | Needs verification (Caution) | Hold and block with consent |
+| N | Rahul: scan a QR and enter your PIN to "return" it | High concern (Dangerous payment action) | Hold, block, and bank ticket with consent |
+| O | Same-ID request from a sender in the fraud graph | Needs verification (Suspicious network) | Hold, block, and bank ticket with consent |
 
 Select a scenario in the presenter controls and choose **Load / reopen scenario**. A–E are part of the default history; F–L transactions are added when first loaded. Choose **Ask Byte Bot**, review the saved inputs, and analyze. Reopening preserves edits, evidence, results, reports, and case status. Reset before replaying the original inputs.
 

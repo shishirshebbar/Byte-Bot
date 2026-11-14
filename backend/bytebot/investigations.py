@@ -52,9 +52,18 @@ def persist_evidence(request, case_id, revision, kind, text, metadata=None, noti
 def process_image(request, data, media):
     image, metadata = decode_image(data, media)
     try:
-        text, notice = request.app.state.ocr.extract(image)
+        from . import qr
         from .safety import request_markers
-        metadata['request_markers'] = request_markers(text)
+        intents = qr.payment_intents(image)
+        text, notice = request.app.state.ocr.extract(image)
+        markers = request_markers(text)
+        if intents:
+            # A UPI QR always pays out from the scanner; keep only the parsed intent.
+            metadata['qr_payments'] = intents
+            markers = list(dict.fromkeys(markers + ['qr_payment']))
+            text = '\n'.join([text or ''] + [qr.describe(i) for i in intents]).strip()
+            notice = None
+        metadata['request_markers'] = markers
         text = redact(text)[:10000]
         return text, metadata, notice if notice else (None if text else 'unreadable')
     finally:
