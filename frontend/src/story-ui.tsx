@@ -69,7 +69,7 @@ export function ClaimCheckPage() {
       <label className="field">What did they say?<textarea aria-label="What did they say?" rows={3} maxLength={2000} value={text} onChange={e => { setText(e.target.value); setResult(undefined); }} placeholder="Hi, I sent you ₹5,000 by mistake…" /></label>
       <div className="claim-row">
         <label className="field">Who says they sent it?<input aria-label="Who says they sent it?" value={sender} maxLength={80} onChange={e => { setSender(e.target.value); setResult(undefined); }} placeholder="Name or UPI ID" /></label>
-        <label className="field">Amount (optional)<input aria-label="Claimed amount" inputMode="decimal" value={amount} onChange={e => { setAmount(e.target.value); setResult(undefined); }} placeholder="5000" /></label>
+        <label className="field">Amount<input aria-label="Claimed amount" inputMode="decimal" value={amount} onChange={e => { setAmount(e.target.value); setResult(undefined); }} placeholder="5000" /></label>
       </div>
       <button disabled={busy || (!text.trim() && !amount.trim())}>{busy ? 'Checking…' : 'Check my payments'}</button>
     </form>
