@@ -74,7 +74,7 @@ Frontend terminal, from the repository root:
 npm --prefix frontend run dev
 ```
 
-Open **http://127.0.0.1:5174** for the split-screen Paytm-style presentation, **/console** for the human teammate console, and **/metrics** for outcomes. Choose **Load / reopen scenario**, then **Ask Byte Bot** and **Analyze & prepare report** in the phone. The [standard workspace](http://127.0.0.1:5174/workspace) is available for testing and the alternate screenshot walkthrough. See the [demo walkthrough](docs/demo.md).
+Open **http://127.0.0.1:5174** for the Paytm-style customer home beside the judge backend view, **/console** for the human teammate console, and **/metrics** for outcomes. Use **Balance & History** to open a payment, or expand **Demo setup** in the judge panel and choose **Load / reopen scenario**. Then choose **Ask Byte Bot** and **Analyze & prepare report** in the phone. The [standard workspace](http://127.0.0.1:5174/workspace) is available for testing and the alternate screenshot walkthrough. See the [demo walkthrough](docs/demo.md).
 
 ## Development documentation
 

@@ -15,6 +15,7 @@ import { DemoControls } from './demo';
 import { Presentation } from './presentation';
 import { useScreenPath } from './screen-path';
 import { PhoneHistory } from './phone-history';
+import { PhoneHome } from './phone-home';
 import { ConsolePage } from './console';
 import { MetricsPage } from './metrics';
 import { ClaimCheckPage } from './story-ui';
@@ -63,10 +64,11 @@ function Detail() {
   const screen = useScreenPath();
   const presentation = useLocation().pathname.startsWith('/transactions/');
   const { data: t, error, retry } = useData<Transaction>(`/transactions/${encodeURIComponent(id || '')}`);
-  return <><Link className="back" to={screen('/')}><ArrowLeft size={18} aria-hidden="true" /> All transactions</Link><h1>Transaction details</h1>
-    {!t ? <Notice error={error} retry={retry} /> : <section className="panel detail"><div className="payment-summary"><span className="avatar"><ArrowDownLeft aria-hidden="true" /></span><p>{t.status === 'successful' ? 'Received from' : 'Incoming payment from'} {t.sender_name}</p><div className="hero-amount">{money(t)}</div><Status value={t.status} /><p className="status-explanation">{t.status === 'successful' ? 'This demo payment completed successfully.' : t.status === 'pending' ? 'This payment is pending. Funds are not confirmed as received.' : 'This payment failed. Funds were not received.'}</p>{presentation && <AskByteBot transactionId={t.id} />}</div><dl>{[
+  const facts = t && <dl>{[
       ['Sender', t.sender_name], ['Sender UPI ID', t.sender_vpa], ['Recipient UPI ID', t.receiver_vpa], ['Date & time', `${date(t.occurred_at)} IST`], ['Transaction reference', t.reference], ['Direction', 'Incoming'], ['Currency', t.currency], ['Source', 'Synthetic demo record (mock)'],
-    ].map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></section>}
+    ].map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>;
+  return <><Link className="back" to={presentation ? "/history" : screen('/')}><ArrowLeft size={18} aria-hidden="true" /> All transactions</Link><h1>Transaction details</h1>
+    {!t ? <Notice error={error} retry={retry} /> : <section className="panel detail"><div className="payment-summary"><span className="avatar"><ArrowDownLeft aria-hidden="true" /></span><p>{t.status === 'successful' ? 'Received from' : 'Incoming payment from'} {t.sender_name}</p><div className="hero-amount">{money(t)}</div><Status value={t.status} /><p className="status-explanation">{t.status === 'successful' ? 'This demo payment completed successfully.' : t.status === 'pending' ? 'This payment is pending. Funds are not confirmed as received.' : 'This payment failed. Funds were not received.'}</p>{presentation && <AskByteBot transactionId={t.id} />}</div>{presentation ? <details className="receipt-details"><summary>Payment details</summary>{facts}</details> : facts}</section>}
     {t && !presentation && <AskByteBot transactionId={t.id} />}<p className="footnote">Demo transaction facts only. No money can be sent, returned, or reversed here.</p></>;
 }
 function WorkspaceLayout() {
@@ -77,7 +79,7 @@ function PresentationLayout() {
   const { pathname } = useLocation();
   const [refresh, setRefresh] = useState(0);
   const transactions = useTransactions(refresh);
-  return <Presentation ready={!!transactions.data} onReset={() => setRefresh(value => value + 1)} sessionRetry={transactions.error ? transactions.retry : undefined}>
+  return <Presentation ready={!!transactions.data} refreshTransactions={() => setRefresh(value => value + 1)} sessionRetry={transactions.error ? transactions.retry : undefined}>
     {pathname === '/' || transactions.data ? <Outlet context={transactions} /> :
       <Notice error={transactions.error} retry={transactions.retry} />}
   </Presentation>;
@@ -86,6 +88,11 @@ function PresentationLayout() {
 function PresentationHistory() {
   const { data, error, retry } = useOutletContext<ReturnType<typeof useTransactions>>();
   return data ? <PhoneHistory transactions={data.transactions} /> : <><h1>Transaction history</h1><Notice error={error} retry={retry} /></>;
+}
+
+function PresentationHome() {
+  const { data, error, retry } = useOutletContext<ReturnType<typeof useTransactions>>();
+  return data ? <PhoneHome transactions={data.transactions} /> : <><h1>Welcome to Paytm</h1><Notice error={error} retry={retry} /></>;
 }
 
 function MissingPage() {
@@ -103,7 +110,7 @@ const screens: RouteObject[] = [
   { path: '*', element: <MissingPage /> },
 ];
 const router = createBrowserRouter([
-  { path: '/', element: <PresentationLayout />, children: [{ index: true, element: <PresentationHistory /> }, ...screens] },
+  { path: '/', element: <PresentationLayout />, children: [{ index: true, element: <PresentationHome /> }, { path: 'history', element: <PresentationHistory /> }, ...screens] },
   { path: '/metrics', element: <MetricsPage /> },
   { path: '/console', element: <ConsolePage /> },
   { path: '/console/cases/:id', element: <ConsolePage /> },

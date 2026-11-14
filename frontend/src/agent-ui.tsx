@@ -1,16 +1,16 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { Bot, CircleAlert, CircleCheck, CircleX, Frown, Hand, Receipt, Smile, TriangleAlert, Undo2, UserRound } from 'lucide-react';
 import { get, json, request } from './api';
 import type { AgentAction, Assessment, FollowUp, Investigation } from './investigation-types';
 import { money } from './transaction-ui';
-import { usePhoneLock } from './presentation-state';
+import { PresentationState, usePhoneLock } from './presentation-state';
 import './teammate.css';
 import { ListenGuidance } from './voice-ui';
 
 const OUTCOME_COPY: Record<string, string> = {
   needs_customer_info: 'I need a little more detail before I can act. Please answer below.',
   escalated: 'I have handed this case to a person on the support team, with everything I found.',
-  awaiting_consent: 'I can protect your account right away. Approve the steps you want me to take.',
+  awaiting_consent: 'Review these protective steps and choose which ones to approve.',
   actions_ready: 'I am carrying out the approved steps.',
   actions_completed: 'Done. Here is what I did on your behalf.',
   resolved: 'No action is needed. I found no strong warning signs in what you shared.',
@@ -53,11 +53,12 @@ function Questions({ questions, busy, onSubmit }: { questions: FollowUp[]; busy:
 function ActionCard({ action, busy, onConsent, onUndo }: {
   action: AgentAction; busy: boolean; onConsent: (decision: 'approve' | 'decline') => void; onUndo: () => void;
 }) {
+  const presentation = useContext(PresentationState);
   const done = action.state === 'executed';
   return <li className={`action-card state-${action.state}`}>
     <div className="action-head">{done ? <Receipt size={16} aria-hidden="true" /> : <Hand size={16} aria-hidden="true" />}<strong>{action.label}</strong></div>
     <p className="action-state">{STATE_LABEL[action.state]} · {action.system_label}</p>
-    {done && action.system_reference && <p className="receipt">Reference <code>{action.system_reference}</code>{action.detail && <> · {action.detail}</>}</p>}
+    {done && action.system_reference && !presentation && <p className="receipt">Reference <code>{action.system_reference}</code>{action.detail && <> · {action.detail}</>}</p>}
     {!done && <p className="action-reason">{action.reason}</p>}
     {action.state === 'awaiting_consent' && <div className="actions">
       <button disabled={busy} aria-label={`Approve: ${action.label}`} onClick={() => onConsent('approve')}>Approve</button>

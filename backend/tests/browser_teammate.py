@@ -49,27 +49,29 @@ def main():
         def hold(seconds=2.5, target=page):  # Narration pauses, only when recording.
             if RECORD:
                 target.wait_for_timeout(int(seconds * 1000))
-        panel = page.get_by_role('complementary', name='Live investigation explanation')
+        panel = page.get_by_role('complementary', name='Judge backend view')
+
+        panel.locator('.judge-setup > summary').click()
 
         # 1. Proactive alert and a Hinglish scam message: Byte Bot decides and acts with consent.
         page.on('dialog', lambda dialog: dialog.accept())  # The reset confirmation.
         page.get_by_role('button', name='Reset demo').click()
         expect(page.get_by_text('Demo reset', exact=False).first).to_be_visible(timeout=15000)
-        expect(phone.get_by_role('link', name='Unexpected credit alert: check this payment with Byte Bot')).to_be_visible(timeout=15000)
+        expect(phone.get_by_role('link', name='Something feels wrong?', exact=False)).to_be_visible(timeout=15000)
         hold(3)
         load_scenario(page, 'L')
         timings['L_analysis'] = analyze(page, phone)
         expect(phone.get_by_role('heading', name='High concern')).to_be_visible()
-        # The presenter stage carries the verdict, the six-question story, and the display-only risk gauge.
+        # Technical evidence is expandable, with the actual routing always visible.
+        panel.locator('.judge-details > summary').click()
         gauge = panel.get_by_role('img', name=re.compile(r'Risk score \d+ out of 100'))
         expect(gauge).to_be_visible()
-        expect(panel.get_by_label('Stage verdict')).to_be_visible()
-        expect(panel.get_by_role('list', name='Story check').get_by_role('listitem')).to_have_count(6)
-        expect(panel.get_by_text('Supervisor decisions')).to_be_visible()
-        expect(panel.get_by_text('Policy check').first).to_be_visible()
+        expect(panel.get_by_role('list', name='Backend decision timeline')).to_be_visible()
+        expect(panel.get_by_text('Policy check', exact=True)).to_be_visible()
+        panel.locator('.judge-details > summary').click()
         hold(4)
         phone.get_by_role('button', name='Approve: Place a dispute hold on the unexpected credit').click()
-        expect(phone.get_by_text(re.compile(r'SIM-HOLD-[0-9A-F]{8}'))).to_be_visible(timeout=10000)
+        expect(panel.get_by_text(re.compile(r'SIM-HOLD-[0-9A-F]{8}'))).to_be_visible(timeout=10000)
         hold(2.5)
         phone.get_by_role('button', name='Approve: Block the requesting UPI ID for this customer').click()
         phone.get_by_role('button', name='Approve: Open a dispute ticket with the bank').click()
@@ -86,7 +88,7 @@ def main():
             phone.get_by_role('group', name=question).get_by_role('button', name=answer, exact=True).click()
         phone.get_by_role('group', name=re.compile('Did the person do any of these')).get_by_role('button', name='Rushed me').click()
         phone.get_by_role('button', name='Send answers').click()
-        expect(phone.get_by_text('I can protect your account right away.')).to_be_visible(timeout=20000)
+        expect(phone.get_by_text('Review these protective steps', exact=False)).to_be_visible(timeout=20000)
         hold(3)
 
         # 3. Money already sent: the agent escalates; a person approves in the console.
@@ -109,9 +111,10 @@ def main():
         hold(2.5, staff)
         staff.get_by_role('button', name='Resolve').click()
         expect(staff.locator('.case-header').get_by_text('Resolved')).to_be_visible(timeout=10000)
-        page.reload()
-        expect(phone.get_by_text(re.compile(r'SIM-1930-[0-9A-F]{8}'))).to_be_visible(timeout=15000)
-        phone.get_by_text(re.compile(r'SIM-1930-[0-9A-F]{8}')).scroll_into_view_if_needed()
+        # Both panes receive the human decision through the existing case polling.
+        expect(panel.get_by_text(re.compile(r'SIM-1930-[0-9A-F]{8}'))).to_be_visible(timeout=15000)
+        expect(phone.locator('.action-card.state-executed').filter(has_text='Prepare a 1930 cybercrime complaint draft')).to_be_visible()
+        panel.get_by_text(re.compile(r'SIM-1930-[0-9A-F]{8}')).scroll_into_view_if_needed()
         hold(3)
 
         # 4. Outcomes.
@@ -130,7 +133,7 @@ def main():
         Path(video).replace(final)
         timings['video'] = str(final.relative_to(OUT.parents[1]))
     (OUT / 'teammate-timings.json').write_text(json.dumps(timings, indent=2), encoding='utf-8')
-    print('PASS: alert, Hinglish decision with gauge and trace, consent receipts, follow-up pause/resume, '
+    print('PASS: home, Hinglish decision with judge gauge and trace, consent receipts, follow-up pause/resume, '
           f'escalation and console approval with ledger, customer receipt, metrics; {timings}')
 
 

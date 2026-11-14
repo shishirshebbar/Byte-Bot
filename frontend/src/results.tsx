@@ -46,6 +46,7 @@ export function ResultsPage() {
           ? { ...next, case_status: current.case_status, status_revision: current.status_revision }
           : next);
         if (next.analysis && ['queued', 'running'].includes(next.analysis.state)) timer = setTimeout(() => void load(), 1000);
+        else if (presentation && next.escalation && next.escalation.state !== 'resolved') timer = setTimeout(() => void load(), 4000);
       } catch (e) {
         if (!abort.signal.aborted) {
           setError((e as Error).message); setData(undefined); showCase?.(undefined);
@@ -119,7 +120,7 @@ export function ResultsPage() {
   const evidenceLink = (reference: string) => screen(`/investigations/${id}#evidence-${reference}`);
   const lists = data && result && <ResultLists data={data} />;
   return <><Link className="back" to={screen(`/investigations/${id}`)}>← Edit saved context and evidence</Link>
-    <div className="eyebrow">BYTE BOT · ANALYSIS</div><h1>Investigation results</h1>
+    <div className="eyebrow">BYTE BOT</div><h1>{presentation ? "Your payment check" : "Investigation results"}</h1>
     {error && <div role="alert" className="error-box"><p>{error}</p><button onClick={() => setAttempt(v => v + 1)}>Reload saved case</button></div>}
     {reportError && <div role="alert" className="error-box">{reportError}</div>}
     {!data && !error && <p role="status">Loading saved analysis…</p>}
@@ -131,8 +132,7 @@ export function ResultsPage() {
       {result && run && <>
         {presentation ? <>
           <p className="results-payment">{money(data.transaction)} · {data.transaction.sender_name} <Status value={data.transaction.status} /></p>
-          <VerdictBanner headline={result?.headline} compact />
-          {summary}
+          <section className={`panel customer-verdict ${result.category === 'High concern' ? 'concern' : ''}`} aria-label="Assessment"><div className="section-body"><h2>{result.category}</h2><p>{result.headline?.message ?? result.summary}</p><strong>{result.recommendations[0]}</strong></div></section>
           {warning}
           {agentPanel}
           <section className="panel resolution-actions" aria-label="Private incident report"><div className="section-body">
@@ -151,7 +151,7 @@ export function ResultsPage() {
           <StatusControl id={data.id} value={data} onChange={next => setData(current => current?.id === data.id ? { ...current, case_status: next.case_status, status_revision: next.status_revision } : current)} />
           <p><Link to={screen('/incidents')}>Track case in My Incidents</Link></p>
           <details className="result-details">
-          <summary>Details: findings, sources and limitations</summary>
+          <summary>Why this result?</summary>
           {findings.length > 0 && <section className="panel resolution-findings" aria-label="What shaped the assessment">
             <div className="panel-heading"><h2>What shaped the assessment</h2></div>
             <ul>
@@ -164,6 +164,7 @@ export function ResultsPage() {
               </li>)}
             </ul>
           </section>}
+          <p className="section-body">{result.provider_mode === "fixture" ? "Synthetic extraction fixture" : "Rule-based assessment"} · {date(result.generated_at)} IST</p>
           {lists}
           </details>
         </> : <>
@@ -181,12 +182,13 @@ export function ResultsPage() {
   </>;
 }
 function ResultLists({ data }: { data: Investigation }) {
+  const presentation = useContext(PresentationState);
   const screen = useScreenPath();
   const result = data.analysis!.result!;
   const id = data.id;
   return <>
         <section className="panel"><div className="panel-heading"><h2>Recommended next steps</h2></div><div className="section-body"><ol>{result.recommendations.map(text => <li key={text}>{text}</li>)}</ol></div></section>
-        <section className="panel" aria-label="Findings and sources"><div className="panel-heading"><h2>Findings and sources</h2></div><div className="section-body">{result.findings.map((f, i) => <article className="finding" key={i}><h3>{f.text}</h3><p className="field-help">Source: {f.source}</p>{f.quote && <blockquote>{f.quote}</blockquote>}<p className="finding-reference">Reference: {data.evidence.some(e => e.id === f.reference) ? <Link to={screen(`/investigations/${id}#evidence-${f.reference}`)}>Review source evidence</Link> : f.reference} · Rule: {f.rule_id}</p></article>)}</div></section>
+        <section className="panel" aria-label="Findings and sources"><div className="panel-heading"><h2>Findings and sources</h2></div><div className="section-body">{result.findings.map((f, i) => <article className="finding" key={i}><h3>{f.text}</h3><p className="field-help">Source: {f.source}</p>{f.quote && <blockquote>{f.quote}</blockquote>}<p className="finding-reference">Reference: {data.evidence.some(e => e.id === f.reference) ? <Link to={screen(`/investigations/${id}#evidence-${f.reference}`)}>Review source evidence</Link> : presentation ? "Saved case context" : f.reference}{!presentation && <> · Rule: {f.rule_id}</>}</p></article>)}</div></section>
         {result.intelligence_matches.length > 0 && <section className="panel"><div className="panel-heading"><h2>Simulated intelligence matches</h2></div><div className="section-body">{result.intelligence_matches.map((m, i) => <article key={i}><h3>{m.identifier}</h3><p>{m.source_label} · {m.match_type} · {date(m.reported_at)} IST</p><p>{m.incident_reference}: {m.limitations}</p></article>)}</div></section>}
         <section className="panel"><div className="panel-heading"><h2>Unknowns and limitations</h2></div><div className="section-body"><ul>{result.limitations.map(text => <li key={text}>{text}</li>)}</ul></div></section>
   </>;
