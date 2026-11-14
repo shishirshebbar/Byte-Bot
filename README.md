@@ -2,7 +2,7 @@
 
 Byte Bot is a transaction-linked assistant for reviewing unexpected UPI credits in a simulated Paytm-style application. It connects transaction history, guided intake, reviewed evidence, explainable assessments, and downloadable incident reports.
 
-**Status:** Phases 01–05 are implemented. The recorded MVP acceptance run passed 94 backend tests, the frontend build, five browser suites, and real CPU OCR. Live Gemini verification remains optional and pending local key/model configuration. See [progress](docs/progress.md) for dated commands and results.
+**Status:** In the Paytm-style presentation, one customer approval runs the investigation and prepares a private report. The customer can download it and save follow-up from the result. The recorded acceptance run passed 100 backend tests, the frontend build, six browser suites, and real CPU OCR. See [progress](docs/progress.md) for measurements and verification.
 
 ## Features
 
@@ -32,8 +32,8 @@ Ports **5000, 5173, and 3306** belong to another project. Do not use or interrup
 Fresh clone, Linux/macOS:
 
 ```bash
-git clone https://github.com/krishnacsn/byte.git
-cd byte
+git clone https://github.com/shishirshebbar/Byte-Bot.git
+cd Byte-Bot
 cp .env.example .env
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -r backend/requirements-dev.txt
@@ -60,7 +60,7 @@ Frontend terminal, from the repository root:
 npm --prefix frontend run dev
 ```
 
-Open **http://127.0.0.1:5174**. Select a synthetic scenario and choose **Load / reopen scenario**, then **Ask Byte Bot**. Fixture mode is explicit and accepts only canonical synthetic evidence; arbitrary evidence uses the documented fallback. See the [demo walkthrough](docs/demo.md).
+Open **http://127.0.0.1:5174** for the split-screen Paytm-style presentation. Choose **Load / reopen scenario**, then **Ask Byte Bot** and **Analyze & prepare report** in the phone. The [standard workspace](http://127.0.0.1:5174/workspace) is available for testing and the alternate screenshot walkthrough. See the [demo walkthrough](docs/demo.md).
 
 ## Development documentation
 
@@ -78,13 +78,7 @@ Open **http://127.0.0.1:5174**. Select a synthetic scenario and choose **Load / 
 
 ## Phase guides
 
-| Phase | Outcome |
-| --- | --- |
-| [01 Foundation](docs/phases/01-foundation.md) | Sessions, migrations, seeds, transaction history and details |
-| [02 Guided investigation](docs/phases/02-guided-investigation.md) | Saved intake, reviewed evidence, and removal |
-| [03 Analysis and results](docs/phases/03-analysis-and-results.md) | Orchestration and explainable categories |
-| [04 Reports and follow-up](docs/phases/04-reports-and-follow-up.md) | Text export, case tracking, and audit events |
-| [05 Hardening and demo](docs/phases/05-hardening-and-demo.md) | Acceptance, reset, and rehearsal |
+[Paytm hackathon presentation plan](docs/paytm-hackathon-plan.md)
 
 ## Repository layout
 

@@ -1,6 +1,6 @@
 # Byte Bot implementation progress
 
-Entries below are dated historical records. Local `.cache/` screenshots, reports, and timings are intentionally excluded from GitHub; regenerate them using [testing](testing.md) and [demo](demo.md). The latest entry records repository preparation.
+Entries below are dated historical records. Local `.cache/` screenshots, reports, and timings are excluded from GitHub. Regenerate them using [testing](testing.md) and [demo](demo.md). The latest entry covers the one-approval hackathon upgrade.
 
 ## Preparation
 
@@ -19,13 +19,13 @@ The earlier attempt also started a temporary PostgreSQL container named `bytebot
 
 | Phase | Status | Exit evidence |
 | --- | --- | --- |
-| [01 Foundation](phases/01-foundation.md) | Complete | 2026-11-13: 7 integration tests, frontend build, and browser smoke passed; see entry below. |
-| [02 Guided investigation](phases/02-guided-investigation.md) | Complete | 2026-11-13: 28 tests, build, real CPU OCR, and both browser suites passed; see entry below. |
-| [03 Analysis and results](phases/03-analysis-and-results.md) | Complete | 2026-11-13: 59 tests, frontend build, and three browser suites passed; optional live Gemini pending configuration. |
-| [04 Reports and follow-up](phases/04-reports-and-follow-up.md) | Complete | 2026-11-13: 74 backend tests, frontend build, and all four browser suites passed; AT-12 and remaining AT-10 verified. |
-| [05 Hardening and demo](phases/05-hardening-and-demo.md) | Complete | 2026-11-13: 94 backend tests, frontend build, five browser suites, real CPU OCR, reset races/isolation, and fresh-reset screenshot rehearsal passed. |
+| [01 Foundation](#2026-11-13--phase-01-foundation-complete) | Complete | 2026-11-13: 7 integration tests, frontend build, and browser smoke passed; see entry below. |
+| [02 Guided investigation](#2026-11-13--phase-02-guided-investigation-complete) | Complete | 2026-11-13: 28 tests, build, real CPU OCR, and both browser suites passed; see entry below. |
+| [03 Analysis and results](#2026-11-13--phase-03-analysis-and-results-complete) | Complete | 2026-11-13: 59 tests, frontend build, and three browser suites passed; optional live Gemini pending configuration. |
+| [04 Reports and follow-up](#2026-11-13--phase-04-reports-and-follow-up-complete) | Complete | 2026-11-13: 74 backend tests, frontend build, and all four browser suites passed; AT-12 and remaining AT-10 verified. |
+| [05 Hardening and demo](#2026-11-13--phase-05-hardening-and-demo-complete) | Complete | 2026-11-13: 94 backend tests, frontend build, five browser suites, real CPU OCR, reset races/isolation, and fresh-reset screenshot rehearsal passed. |
 
-Phases 01–05 are complete. Deterministic MVP acceptance passes; optional live Gemini verification remains pending local key/model configuration. No additional feature phase is authorized.
+Phases 01–05 are complete. Deterministic MVP acceptance passes; optional live Gemini verification remains pending local key/model configuration. The [Paytm hackathon presentation plan](paytm-hackathon-plan.md) tracks the new presentation phases.
 
 ## Update template
 
@@ -272,3 +272,86 @@ Authorized by the user's “Implement the plan” after choosing preparation and
 ### Verification boundaries
 
 Browser journeys, real OCR, live Gemini, and demo migration/seed commands were not rerun during repository preparation; their earlier dated outcomes remain above. Optional live Gemini remains pending local key/model configuration. No service was stopped, restarted, or reconfigured; protected ports 5000, 5173, 3306 and temporary PostgreSQL 55432 were left untouched. Generated evidence, reports, caches, and credentials are not part of the repository.
+
+## 2026-11-13 — Windows local installation and startup
+
+Authorized by the user's “Implement the plan” and “continue the plan” requests. This is installation and verification of the completed MVP, not a new feature phase. Full CPU OCR setup was selected during planning.
+
+### Environment and installation
+
+- Reviewed the repository Markdown guides, existing manifests, lockfile, and application setup. Preserved `AGENTS.md`, dependency versions, migrations, and application source.
+- Windows PowerShell, uv-managed Python 3.12.16, Node 22.19.0, npm 11.21.2, Docker 29.9.2, and Compose v5.6.1. Docker Desktop was initially stopped; started the installed executable with `Start-Process -WindowStyle Hidden` and verified the Linux engine.
+- `uv venv --python 3.12 --seed .venv` — passed. Created the previously absent `.env` from `.env.example`; no Gemini credentials added. The API uses an explicit process-level fixture override.
+- `.\.venv\Scripts\python.exe -m pip install -r backend/requirements-dev.txt` — passed after resuming an interrupted installation. `npm --prefix frontend ci` — passed, 29 packages installed, zero reported vulnerabilities.
+- `.\.venv\Scripts\python.exe -m pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu`, followed by `-m pip install -r backend/requirements-ocr.txt` — passed. Verified torch 2.6.0+cpu, torchvision 0.21.0+cpu, and CUDA unavailable. `-m playwright install chromium` — passed.
+- `docker compose config --quiet`, `docker compose --env-file .env.example config --quiet`, and `docker compose up -d --wait db` — passed. PostgreSQL is healthy on loopback 55433. Created `bytebot_test` after querying `pg_database`; the initial empty-query PowerShell null handling was corrected without changing application code.
+- From `backend/`, `..\.venv\Scripts\python.exe -m bytebot.cli migrate` twice and `seed` twice — all passed.
+
+### Verification
+
+- `.\.venv\Scripts\python.exe -m pytest backend/tests -q` — **94 passed**, 85.07s. Only the guarded separate test database was rebuilt.
+- `npm --prefix frontend run build` — passed TypeScript and Vite production bundling. Existing React Router `use client` warnings remain nonblocking. `.\.venv\Scripts\python.exe -m pip check` — passed.
+- Started fixture Uvicorn from `backend/` with `-m uvicorn bytebot.main:app --host 127.0.0.1 --port 8000 --no-access-log`. Started the frontend with `node node_modules/vite/bin/vite.js` from `frontend/`, equivalent to its npm dev script. Both are hidden background processes; `/api/v1/health` returns ready/database available directly and through the frontend proxy.
+- With `BYTEBOT_WEB_URL=http://127.0.0.1:5174` and `PYTHONIOENCODING=utf-8`, ran `browser_smoke.py`, `browser_phase03.py`, and `browser_phase04.py` using the project interpreter — all passed, no page errors. Phase 03 fixture analysis A–E took 1.42, 1.42, 1.44, 1.42, and 1.42 seconds. Verified reports/downloads/statuses, ownership, invalidation, desktop/mobile, keyboard, and fallback behavior.
+- Started `node node_modules/vite/bin/vite.js preview` from `frontend/` on 4174 and reran `browser_smoke.py` with that URL — passed against the production bundle. Verified its process identity and stopped only that temporary preview.
+- Visually inspected generated desktop results and mobile report screenshots; labels, provenance, controls, and content are readable without horizontal clipping. Local logs and generated artifacts are ignored under `.cache/`.
+- From `backend/`, `..\.venv\Scripts\python.exe -m bytebot.cli ocr-prepare` — passed, downloaded and validated CRAFT and English recognition models in `.cache/easyocr`. `.\.venv\Scripts\python.exe backend/tests/ocr_smoke.py` from the root — passed actual CPU OCR: legible synthetic image 13.19s including lazy initialization; unreadable image 1.38s.
+- Restarted only the verified Byte Bot Uvicorn process after installing OCR. With the same web URL and UTF-8 shell settings, `.\.venv\Scripts\python.exe backend/tests/browser_phase02.py` and `backend/tests/browser_phase05.py` — both passed without page errors. All five documented browser suites have now passed on Windows without source or test changes.
+- Phase 05 fixture analysis times: A 1.36s, B 1.38s, C/D/E 1.39s each, and reviewed Scenario B screenshot 1.39s, all below 20 seconds. Fresh-reset screenshot-to-report/status rehearsal passed in 6.08s including warm CPU OCR and excluding human narration. Verified desktop 1280×900, mobile 390×844, actual keyboard navigation, isolated/repeated reset, old URL/report invalidation, and error recovery. Visually inspected the new mobile history screenshot; controls and all eight transactions fit without horizontal clipping.
+- Final `.\.venv\Scripts\python.exe -m pip check`, `git diff --check`, database health, and direct/proxied API checks — passed. Preview port 4174 is no longer listening. Protected MySQL remains on 3306 with the same observed PID 6732.
+
+### Running services and handoff
+
+Installation, build, and deterministic Windows verification are complete. The frontend remains available at **http://127.0.0.1:5174**, with fixture API **8000** and healthy PostgreSQL **55433**. Final API PID is 19572 (virtual-environment launcher 23588); frontend PID is 28932. Service metadata and logs are local ignored files under `.cache/setup/`.
+
+Run `.\.cache\setup\stop-bytebot.ps1` from the repository root to stop only this run's API/frontend. The helper checks recorded process creation times and expected command lines before stopping; `-WhatIf` was verified without stopping services. `docker compose stop db` separately stops Byte Bot's database while preserving its volume. The temporary production preview was already stopped.
+
+Only this progress file changed in tracked source. `AGENTS.md`, application code, tests, dependency manifests/lockfile, and migrations remain unchanged. Live Gemini remains separately pending configuration and was not invoked. No operation targeted protected ports 5000, 5173, 3306 or the original temporary database on 55432.
+
+## 2026-11-14 — Paytm hackathon presentation
+
+- **Phase 0** Saved the [presentation plan](paytm-hackathon-plan.md), retired five superseded guides, preserved the Windows handoff, and verified relative paths and heading links across all 11 Markdown files.
+- **Phases 1–3** The root presentation now shares transaction, investigation, report, and incident screens with the standard workspace at `/workspace`. The phone runs the saved case workflow. The presenter panel displays the observed workflow stages, sourced evidence, report readiness, and saved follow-up. The presenter controls use the existing scenario and reset endpoints.
+
+### Verification environment
+
+- Windows PowerShell, Python 3.12, fixture API on 8000, frontend on 5174, production preview on 4174, and a separate local PostgreSQL 18 cluster on loopback 55433. Docker Desktop's Linux engine was unavailable, so `initdb` and `pg_ctl` started the cluster in `.cache/paytm-postgres`. Both Byte Bot databases use UTC. An initial test run on the cluster's default Windows timezone returned 93 passes and one UTC serialization failure. Correcting the local database settings resolved it.
+- From `backend/`, ran `..\.venv\Scripts\python.exe -m bytebot.cli migrate` and `..\.venv\Scripts\python.exe -m bytebot.cli seed` successfully. Started `-m uvicorn bytebot.main:app --host 127.0.0.1 --port 8000 --no-access-log` with explicit fixture mode. Health reported ready and database available.
+
+### Phase 4 checks
+
+- `npm --prefix frontend run build` passed TypeScript and Vite production bundling. Existing React Router dependency directive warnings were nonblocking.
+- `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed all **94 tests** in **32.10 seconds**. The guarded `bytebot_test` database was used for integration tests.
+- `.\.venv\Scripts\python.exe backend/tests/ocr_smoke.py` passed for a legible synthetic image (**13.78 seconds**, including initialization) and an unreadable image (**0.65 seconds**).
+- With `BYTEBOT_WEB_URL=http://127.0.0.1:4174`, ran `.\.venv\Scripts\python.exe backend/tests/<suite>.py` for `browser_smoke`, `browser_phase02`, `browser_phase03`, `browser_phase04`, `browser_phase05`, and `browser_presentation`. All six passed after restarting the Byte Bot API to clear pooled connections established before the database timezone adjustment. The workspace suites cover all A–E results, real screenshot confirmation, keyboard controls, analysis retry, session isolation, stale report invalidation, and reset recovery. The presentation suite covers panel synchronization, report download and reopen, saved status, evidence deep links, reset recovery, ownership, keyboard-only actions at mobile width, and viewports 1280×720, 1440×900, 390×844, and 320×740.
+- The fresh-reset Scenario B run reached the visible **High concern** result in **1.38 seconds** after Analyze. It downloaded the UTF-8 report, saved **Bank Contacted**, and reopened the report in **2.18 seconds** from scenario load. These measure automated actions in fixture mode and exclude narration. Scenario A–E fixture runs stayed below 1.4 seconds, and the alternate warm CPU OCR rehearsal took 3.06 seconds.
+- Visually checked the desktop history and findings and the 390 px and 320 px mobile screenshots. Screenshots and timings are local under `.cache/paytm-presentation/`. The [demo walkthrough](demo.md#four-minute-presentation) contains the narrated running order. A timed human presentation remains unverified. Live Gemini verification remains pending a local key and model.
+- Presentation Phases 0–4 passed the local implementation and automated verification checks. `git diff --check` passed. The frontend on 5174 and production preview on 4174 remain available. No command targeted the services on 5000, 5173, 3306, or 55432.
+
+## 2026-11-14 — One-approval hackathon upgrade
+
+- **Upgrade Phase 1 complete.** Rehearsed the existing flow three times before editing. Added revision-scoped report approval to the existing analyze endpoint and worker. Migration 005 defaults existing runs to analysis only. Tests verified queued, running, and completed approvals, concurrent requests, ownership, and invalidation. An injected database error rolled back report creation while preserving the assessment, and manual retry recovered it.
+- **Upgrade Phase 2 complete.** The phone result exposes priority safety guidance, a private report download, source links, and customer-entered follow-up. The presenter panel uses the current report ID and the saved case status returned by the API. The standard workspace still offers separate analysis and report actions. Verified Scenario B's same-ID, threat, and bank-avoidance findings and the A–E fixture outcomes.
+- **Upgrade Phase 3 complete.** All three fixture runs passed the two-action reduction and 20-second readiness gates, downloaded a UTF-8 report, saved **Bank Contacted**, and reopened through **My Incidents**. The [four-minute script and judge Q&A](demo.md#four-minute-presentation) are ready. The local silent fallback recording `.cache/paytm-upgrade/scenario-b-fallback.webm` was played and inspected in Chromium at 1440×900. Duration **25.56 seconds**.
+
+### Scenario B measurements
+
+Automated Windows Playwright runs on the 1280×720 production preview with explicit fixture extraction. Each run reset a fresh browser session and opened the saved Scenario B case. Timing starts at analysis approval and ends once the file is downloaded and **Bank Contacted** is visible as saved. Action counts include selecting and saving that status. Reopening verifies persistence after the timed section.
+
+| Flow | Customer actions | Assessment and report available, seconds by run | Download and follow-up saved, seconds by run |
+| --- | ---: | --- | --- |
+| Baseline | 6 | 1.44, 1.46, 1.45 | 1.72, 1.71, 1.69 |
+| Upgrade | 4 | 1.54, 1.50, 1.52 | 2.26, 1.86, 1.90 |
+
+The baseline actions were analyze, generate report, download, open **My Incidents**, select status, and save. The upgrade actions were approve analysis and report, download, select status, and save. The upgrade removed two customer actions and met the report-readiness target. Its measured automated completion times were slightly higher. Raw results are in `.cache/paytm-upgrade/baseline.json` and `.cache/paytm-presentation/timings.json`.
+
+### Commands and results
+
+- From `backend/`, `..\.venv\Scripts\python.exe -m bytebot.cli migrate` passed twice. Restarted the verified Byte Bot API with `BYTEBOT_EXTRACTION_MODE=fixture` and `-m uvicorn bytebot.main:app --host 127.0.0.1 --port 8000 --no-access-log`. The production preview proxy reported ready and the scenario catalog reported fixture mode.
+- `.\.venv\Scripts\python.exe -m pytest backend/tests/test_reports.py -q` passed **21 tests**. `.\.venv\Scripts\python.exe -m pytest backend/tests -q` passed **100 tests in 107.66 seconds** using the guarded test database.
+- `npm --prefix frontend run build` passed. Vite reported the existing nonblocking React Router module directive warnings.
+- With `BYTEBOT_WEB_URL=http://127.0.0.1:4174` and `PYTHONIOENCODING=utf-8`, `.\.venv\Scripts\python.exe backend/tests/<suite>.py` passed for `browser_smoke`, `browser_phase02`, `browser_phase03`, `browser_phase04`, `browser_phase05`, and `browser_presentation`. Checked report retry, UTF-8 download, saved follow-up, ownership, invalidation and reset. Checked 1280×720, 1440×900, 390×844, and 320×740, including keyboard-only download and status save at 390 px. Inspected the 1440 px, 390 px, and 320 px result screenshots.
+- `.\.venv\Scripts\python.exe backend/tests/ocr_smoke.py` passed real CPU EasyOCR for the legible (**29.97 seconds**, including initialization) and unreadable (**1.47 seconds**) synthetic screenshots. The workspace's warm OCR-to-report browser rehearsal completed in **5.44 seconds**.
+- `git diff --check` passed. The Byte Bot frontend, preview, API, and database remained on ports 5174, 4174, 8000, and 55433.
+
+A timed human rehearsal and live Gemini verification remain pending. The automated benchmark measures synthetic workflow completion. Fraud prevention, detection precision, and support handling time remain pilot metrics.

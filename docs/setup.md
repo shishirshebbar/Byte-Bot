@@ -7,8 +7,8 @@ Use Python 3.12, Node 22 with npm, and Docker with the Compose plugin. Version h
 For a fresh checkout:
 
 ```bash
-git clone https://github.com/krishnacsn/byte.git
-cd byte
+git clone https://github.com/shishirshebbar/Byte-Bot.git
+cd Byte-Bot
 cp .env.example .env
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -r backend/requirements-dev.txt
@@ -19,8 +19,8 @@ docker compose config --quiet
 Windows PowerShell:
 
 ```powershell
-git clone https://github.com/krishnacsn/byte.git
-Set-Location byte
+git clone https://github.com/shishirshebbar/Byte-Bot.git
+Set-Location Byte-Bot
 Copy-Item .env.example .env
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r backend/requirements-dev.txt

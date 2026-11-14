@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
+WORKSPACE = os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174').rstrip('/') + '/workspace'
+
 Path('.cache/phase01').mkdir(parents=True, exist_ok=True)
 
 with sync_playwright() as p:
@@ -10,7 +12,7 @@ with sync_playwright() as p:
     page = context.new_page()
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
-    page.goto(os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174'))
+    page.goto(WORKSPACE)
     page.get_by_role('link', name='Aarav Sharma', exact=False).wait_for()
     page.screenshot(path='.cache/phase01/history-desktop.png', full_page=True)
     ids = []
@@ -40,7 +42,7 @@ with sync_playwright() as p:
     second.goto(ids[0])
     second.get_by_role('heading', name='Transaction unavailable').wait_for()
     page.route('**/api/v1/transactions', lambda route: route.fulfill(status=503, content_type='application/json', body='{"error":{"code":"database_unavailable","message":"Temporarily unavailable."}}'))
-    page.goto(os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174'))
+    page.goto(WORKSPACE)
     page.get_by_role('button', name='Try again').wait_for()
     page.unroute('**/api/v1/transactions')
     page.get_by_role('button', name='Try again').click()

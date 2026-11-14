@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { MessageCircleMore, Paperclip } from 'lucide-react';
 import { ApiError, get, json, request } from './api';
 import { date, money, Status, statusExplanation } from './transaction-ui';
 import { StatusControl } from './incidents';
+import { PresentationState, useCaseSnapshot, usePhoneLock } from './presentation-state';
+import { useScreenPath } from './screen-path';
 
 import type { Answer, Context, Evidence, Investigation, Analysis } from './investigation-types';
 type EvidenceResult = { evidence: Evidence; input_revision: number };
@@ -11,12 +14,19 @@ const titles = { message: 'Pasted message', call_summary: 'Typed call summary', 
 
 export function AskByteBot({ transactionId }: { transactionId: string }) {
   const navigate = useNavigate();
+  const screen = useScreenPath();
+  const presentation = useContext(PresentationState);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  usePhoneLock(busy);
   async function open() {
     setBusy(true); setError('');
-    try { const data = await json<Investigation>('/investigations', 'POST', { transaction_id: transactionId }); navigate(`/investigations/${data.id}`); }
-    catch (e) { setError((e as Error).message); setBusy(false); }
+    try {
+      const data = await json<Investigation>('/investigations', 'POST', { transaction_id: transactionId });
+      presentation?.showCase(data);
+      navigate(screen(`/investigations/${data.id}`));
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
   }
   return <div className="ask"><button disabled={busy} onClick={open}>{busy ? 'Opening investigation…' : 'Ask Byte Bot'}</button>{error && <p role="alert">{error}</p>}</div>;
 }
@@ -45,20 +55,27 @@ function Choices({ title, value, options, onChange }: { title: string; value: st
 
 export function InvestigationPage() {
   const { id } = useParams();
+  const screen = useScreenPath();
+  const showCase = useContext(PresentationState)?.showCase;
   const [data, setData] = useState<Investigation>();
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const abort = new AbortController(); setData(undefined); setError('');
-    get<Investigation>(`/investigations/${id}`, abort.signal).then(value => { if (!abort.signal.aborted) setData(value); }).catch(e => { if (!abort.signal.aborted) setError(e.message); });
+    get<Investigation>(`/investigations/${id}`, abort.signal).then(value => { if (!abort.signal.aborted) setData(value); }).catch(e => {
+      if (!abort.signal.aborted) { setError(e.message); showCase?.(undefined); }
+    });
     return () => abort.abort();
-  }, [id, attempt]);
-  if (!data) return <><h1>Byte Bot investigation</h1>{error ? <div role="alert" className="notice"><h2>Investigation unavailable</h2><p>{error}</p><button onClick={() => setAttempt(v => v + 1)}>Try again</button><p><Link to="/">All transactions</Link></p></div> : <p role="status">Loading saved investigation…</p>}</>;
+  }, [id, attempt, showCase]);
+  if (!data || data.id !== id) return <><h1>Byte Bot investigation</h1>{error ? <div role="alert" className="notice"><h2>Investigation unavailable</h2><p>{error}</p><button onClick={() => setAttempt(v => v + 1)}>Try again</button><p><Link to={screen('/')}>All transactions</Link></p></div> : <p role="status">Loading saved investigation…</p>}</>;
   return <Workspace key={`${data.id}:${attempt}`} initial={data} reload={() => { setData(undefined); setAttempt(v => v + 1); }} />;
 }
 
 function Workspace({ initial, reload }: { initial: Investigation; reload: () => void }) {
   const navigate = useNavigate();
+  const screen = useScreenPath();
+  const presentation = useContext(PresentationState);
+  const { hash } = useLocation();
   const [data, setData] = useState(initial);
   const [context, setContext] = useState(initial.context);
   const [kind, setKind] = useState<'message' | 'call_summary'>('message');
@@ -74,16 +91,30 @@ function Workspace({ initial, reload }: { initial: Investigation; reload: () => 
   const contextDirty = JSON.stringify(context) !== JSON.stringify(data.context);
   const dirty = contextDirty || !!text || !!file || data.evidence.some(e => drafts[e.id] !== undefined && drafts[e.id] !== textOf(e));
   useUnsaved(dirty);
+  usePhoneLock(dirty || busy);
+  useCaseSnapshot(data);
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview.url); }, [preview?.url]);
+  useEffect(() => {
+    if (!hash.startsWith('#evidence-')) return;
+    const evidence = document.getElementById(hash.slice(1));
+    evidence?.focus({ preventScroll: true });
+    evidence?.scrollIntoView({ block: 'start' });
+  }, [hash, data.id]);
   function update<K extends keyof Context>(key: K, value: Context[K]) { setContext(v => ({ ...v, [key]: value })); }
   async function perform(action: () => Promise<void>, notice: string) {
     setBusy(true); setFailure(''); setMessage('');
     try { await action(); setMessage(notice); }
-    catch (e) { setFailure((e as Error).message); if (e instanceof ApiError && e.status === 409) setConflict(true); }
+    catch (e) {
+      setFailure((e as Error).message);
+      if (e instanceof ApiError && e.status === 409) { setConflict(true); presentation?.showCase(undefined); }
+    }
     finally { setBusy(false); }
   }
   function apply(result: EvidenceResult) {
-    setData(v => ({ ...v, input_revision: result.input_revision, analysis: null, evidence: v.evidence.some(e => e.id === result.evidence.id) ? v.evidence.map(e => e.id === result.evidence.id ? result.evidence : e) : [...v.evidence, result.evidence] }));
+    setData(v => ({ ...v, input_revision: result.input_revision,
+      analysis: result.input_revision === v.input_revision ? v.analysis : null,
+      evidence: v.evidence.some(e => e.id === result.evidence.id) ? v.evidence.map(e => e.id === result.evidence.id ? result.evidence : e) : [...v.evidence, result.evidence],
+    }));
     setDrafts(v => { const next = { ...v }; delete next[result.evidence.id]; return next; });
   }
   function chooseFile(next: File | null) {
@@ -94,12 +125,48 @@ function Workspace({ initial, reload }: { initial: Investigation; reload: () => 
   }
   const base = `/investigations/${data.id}`;
   const t = data.transaction;
-  return <><Link className="back" to={`/transactions/${t.id}`}>← Transaction details</Link><div className="eyebrow">BYTE BOT · GUIDED INVESTIGATION</div><h1>Let’s understand what happened</h1><p className="intro">Save your answers and voluntarily share the evidence you want to review.</p>
-    <StatusControl id={data.id} value={data} onChange={next => setData(v => ({ ...v, case_status: next.case_status, status_revision: next.status_revision }))} />
+  const awaitingReview = data.evidence.some(e => e.review_state !== 'confirmed');
+  const run = data.analysis;
+  const viewingRun = run && run.state !== 'failed' && (!presentation || run.prepare_report || run.report_id);
+  const resultsPath = screen(`/investigations/${data.id}/results`);
+  const needsApproval = !!presentation && !viewingRun && !run?.prepare_report;
+  const analyze = <button disabled={busy || conflict || dirty || awaitingReview} onClick={() => void perform(async () => {
+    if (!viewingRun) {
+      const analysis = await json<Analysis>(`${base}/analyze`, 'POST', {
+        expected_revision: data.input_revision, ...(presentation ? { prepare_report: true } : {}),
+      });
+      presentation?.showCase({ ...data, analysis });
+    }
+    navigate(resultsPath);
+  }, 'Analysis requested.')}>{viewingRun ? run.state === 'complete' ? 'View current result' : 'View analysis progress' :
+    presentation ? run?.state === 'complete' ? 'Prepare private report' : run?.prepare_report ? 'Retry analysis' : 'Analyze & prepare report' :
+    'Analyze saved information'}</button>;
+  const statusControl = <StatusControl id={data.id} value={data} onChange={next => setData(v => ({ ...v, case_status: next.case_status, status_revision: next.status_revision }))} />;
+  return <><Link className="back" to={screen(`/transactions/${t.id}`)}>← Transaction details</Link><div className="eyebrow">BYTE BOT · GUIDED INVESTIGATION</div><h1>Let’s understand what happened</h1><p className="intro">Save your answers and voluntarily share the evidence you want to review.</p>
+    {!presentation && statusControl}
     <section className="panel attached" aria-label="Attached transaction"><div className="panel-heading"><h2>{money(t)} · {t.sender_name}</h2><Status value={t.status} /></div><div className="section-body"><p>{statusExplanation(t)}</p><p>{t.sender_vpa} · {date(t.occurred_at)} IST</p><p>Reference: {t.reference} · Source: synthetic demo transaction</p></div></section>
     <aside className="guidance">Never share your UPI PIN, OTP, password, or CVV. Do not make a separate repayment because of pressure. Verify the original credit with your bank using its official contact details. This demo cannot move money.</aside>
     <div role="status" aria-live="polite" className="save-status">{busy ? 'Saving or reading screenshot…' : message || `Saved case · revision ${data.input_revision}`}</div>
     {failure && <div role="alert" className="error-box"><p>{failure}</p>{conflict && <button onClick={() => { if (!dirty || window.confirm('Reload and discard unsaved changes?')) reload(); }}>Reload saved case</button>}</div>}
+    {presentation && <section className="panel quick-review" aria-label="Case review">
+      <div className="section-body">
+        <h2>Review before analysis</h2>
+        <p>{data.context.expected_payment === 'no' ? 'Unexpected credit' : 'Payment context saved'} · {data.evidence.filter(e => e.review_state === 'confirmed').length} confirmed evidence</p>
+        {data.evidence.filter(e => e.review_state === 'confirmed').map(item => <blockquote key={item.id}>{item.confirmed_text}</blockquote>)}
+        <a href="#phone-case-inputs" onClick={event => {
+          event.preventDefault();
+          const inputs = document.getElementById('phone-case-inputs');
+          inputs?.focus({ preventScroll: true });
+          inputs?.scrollIntoView({ block: 'start' });
+        }}>Review or edit answers and evidence</a>
+        {dirty && <p>Save edits before analyzing.</p>}
+        {awaitingReview && <p>Confirm or remove each screenshot before analyzing.</p>}
+        {needsApproval && <p className="field-help">Byte Bot uses your saved answers and confirmed evidence to prepare a private report in this case. You choose whether to download or share it.</p>}
+        {analyze}
+      </div>
+    </section>}
+    <div id={presentation ? 'phone-case-inputs' : undefined} tabIndex={presentation ? -1 : undefined}>
+    {presentation && <div className="chat-prompt"><span><MessageCircleMore size={19} aria-hidden="true" /></span><p>I’ve attached the payment details. Did you expect this credit, and has anyone asked you to return it?</p></div>}
     <form className="panel intake" onSubmit={e => { e.preventDefault(); void perform(async () => { const next = await json<Investigation>(`${base}/context`, 'PATCH', { ...context, expected_revision: data.input_revision }); setData(next); setContext(next.context); }, 'Answers saved.'); }}>
       <div className="panel-heading"><h2>1. Tell us the context</h2><span>User-provided answers</span></div><fieldset disabled={busy || conflict} className="form-body">
       {([['expected_payment', 'Were you expecting this payment?'], ['knows_sender', 'Do you know the sender?'], ['repayment_requested', 'Has anyone asked you to return the money?'], ['already_sent_money', 'Have you already sent money in response?']] as [keyof Pick<Context, 'expected_payment' | 'knows_sender' | 'repayment_requested' | 'already_sent_money'>, string][]).map(([key, label]) => <label className="field" key={key}>{label}<select aria-label={label} value={context[key]} onChange={e => update(key, e.target.value as Answer)}><option value="unknown">Not sure / unanswered</option><option value="yes">Yes</option><option value="no">No</option></select></label>)}
@@ -110,6 +177,7 @@ function Workspace({ initial, reload }: { initial: Investigation; reload: () => 
       <Choices title="Did they use pressure or isolation tactics?" value={context.pressure_tactics} options={[[ 'urgency', 'Urgent response'], ['threat', 'Threats'], ['bank_avoidance', 'Do not contact your bank'], ['secrecy', 'Keep it secret']]} onChange={v => update('pressure_tactics', v)} />
       <button type="submit" disabled={!contextDirty}>Save answers</button>{contextDirty && <span className="field-help"> Unsaved answers</span>}
       </fieldset></form>
+    {presentation && <div className="chat-prompt"><span><Paperclip size={18} aria-hidden="true" /></span><p>Share the repayment request or tell me what the caller said. You can review the saved evidence before I analyze it.</p></div>}
     <section className="panel evidence-section"><div className="panel-heading"><h2>2. Add evidence (optional)</h2></div><div className="section-body"><p className="field-help">Only submit text or images you choose to share. Calls are described by you; no calls or messages are accessed automatically. Credential-labelled passages may be removed; review the saved text. Redacted text stays in this demo until you remove it. Images are processed transiently and are never saved on the server.</p>
       <form onSubmit={e => { e.preventDefault(); void perform(async () => { apply(await json<EvidenceResult>(`${base}/evidence`, 'POST', { type: kind, text, expected_revision: data.input_revision })); setText(''); }, 'Evidence saved with credential values redacted.'); }}><fieldset disabled={busy || conflict}>
       <label className="field">Evidence type<select aria-label="Evidence type" value={kind} onChange={e => setKind(e.target.value as typeof kind)}><option value="message">Pasted message</option><option value="call_summary">Typed call summary</option></select></label>
@@ -121,20 +189,19 @@ function Workspace({ initial, reload }: { initial: Investigation; reload: () => 
     </div></section>
     <section className="panel evidence-section" aria-label="Saved evidence"><div className="panel-heading"><h2>3. Review saved evidence</h2><span>{data.evidence.length} / 20 items</span></div><div className="section-body">
       {data.evidence.length === 0 && <p>No evidence added. Your saved answers remain available.</p>}
-      {data.evidence.map(item => <article className="evidence-item" id={`evidence-${item.id}`} key={item.id}><h3>{titles[item.type]}</h3><p className="field-help">Source: {item.type === 'screenshot' ? 'local OCR, reviewed by you when confirmed' : 'user statement'} · {item.review_state === 'confirmed' ? 'Confirmed' : 'Awaiting your review'}</p>
+      {data.evidence.map(item => <article className="evidence-item" id={`evidence-${item.id}`} tabIndex={-1} key={item.id}><h3>{titles[item.type]}</h3><p className="field-help">Source: {item.type === 'screenshot' ? 'local OCR, reviewed by you when confirmed' : 'user statement'} · {item.review_state === 'confirmed' ? 'Confirmed' : 'Awaiting your review'}</p>
         {item.notice && <p role="status" className="guidance">{item.notice === 'unreadable' ? 'No readable text was found.' : 'OCR is unavailable.'} Type or paste the message below, then confirm it. Your investigation is saved.</p>}
         {item.review_state !== 'confirmed' && <p className="field-help">This screenshot is excluded from future analysis until you confirm its text.</p>}
         <label className="field">{item.type === 'screenshot' ? 'Review screenshot text' : 'Review evidence text'}<textarea aria-label={item.type === 'screenshot' ? 'Review screenshot text' : 'Review evidence text'} maxLength={10000} rows={4} value={drafts[item.id] ?? textOf(item)} disabled={busy || conflict} onChange={e => setDrafts(v => ({ ...v, [item.id]: e.target.value }))} /></label>
         <div className="actions"><button disabled={busy || conflict || !(drafts[item.id] ?? textOf(item)).trim()} onClick={() => void perform(async () => { apply(await json<EvidenceResult>(`${base}/evidence/${item.id}`, 'PATCH', { text: drafts[item.id] ?? textOf(item), confirmed: true, expected_revision: data.input_revision })); }, 'Reviewed text confirmed and saved.')}>{item.review_state === 'confirmed' ? 'Save corrected text' : 'Confirm reviewed text'}</button>
         <button className="secondary" disabled={busy || conflict} onClick={() => void perform(async () => { await request<void>(`${base}/evidence/${item.id}?expected_revision=${data.input_revision}`, { method: 'DELETE' }); setData(v => ({ ...v, input_revision: v.input_revision + 1, analysis: null, evidence: v.evidence.filter(e => e.id !== item.id) })); setDrafts(v => { const next = { ...v }; delete next[item.id]; return next; }); if (preview?.id === item.id) setPreview(undefined); }, 'Evidence removed from this case.')}>Remove evidence</button></div></article>)}
     </div></section>
-    <section className="panel"><div className="panel-heading"><h2>4. Analyze saved information</h2></div><div className="section-body">
+    {!presentation && <section className="panel"><div className="panel-heading"><h2>4. Analyze saved information</h2></div><div className="section-body">
       <p>Analysis uses saved answers and confirmed evidence. It does not verify the identity of the sender.</p>
       {dirty && <p role="status">Save or discard your unsaved edits before analyzing.</p>}
-      {data.evidence.some(e => e.review_state !== 'confirmed') && <p role="status">Confirm or remove every screenshot before analyzing.</p>}
-      <button disabled={busy || conflict || dirty || data.evidence.some(e => e.review_state !== 'confirmed')} onClick={() => void perform(async () => {
-        await json<Analysis>(`${base}/analyze`, 'POST', { expected_revision: data.input_revision });
-        navigate(`/investigations/${data.id}/results`);
-      }, 'Analysis queued.')}>{data.analysis?.state === 'complete' ? 'View current result' : data.analysis && ['queued', 'running'].includes(data.analysis.state) ? 'View analysis progress' : 'Analyze saved information'}</button>
-    </div></section></>;
+      {awaitingReview && <p role="status">Confirm or remove every screenshot before analyzing.</p>}
+      {analyze}
+    </div></section>}
+    </div>
+    {presentation && statusControl}</>;
 }

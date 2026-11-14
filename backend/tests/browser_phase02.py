@@ -6,7 +6,8 @@ from synthetic_images import screenshot
 
 OUTPUT = Path('.cache/phase02')
 OUTPUT.mkdir(parents=True, exist_ok=True)
-BASE = os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174')
+BASE = os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174').rstrip('/')
+WORKSPACE = BASE + '/workspace'
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
@@ -19,7 +20,7 @@ with sync_playwright() as p:
       const create = URL.createObjectURL.bind(URL), revoke = URL.revokeObjectURL.bind(URL);
       URL.createObjectURL = value => { const url = create(value); window.blobAudit.created.push(url); return url; };
       URL.revokeObjectURL = url => { window.blobAudit.revoked.push(url); revoke(url); };''')
-    page.goto(BASE)
+    page.goto(WORKSPACE)
     page.get_by_role('link', name='Aarav Sharma', exact=False).click()
     page.get_by_role('button', name='Ask Byte Bot', exact=True).click()
     page.get_by_role('heading', name='Let’s understand what happened').wait_for()
@@ -120,7 +121,7 @@ with sync_playwright() as p:
     page.get_by_text('No evidence added. Your saved answers remain available.', exact=True).wait_for()
     # All transaction statuses remain eligible for intake with accurate wording.
     for sender, wording in [('Meera Rao', 'Funds are not confirmed as received.'), ('Kabir Shah', 'Funds were not received.')]:
-        page.goto(BASE)
+        page.goto(WORKSPACE)
         page.get_by_role('link', name=sender, exact=False).click()
         page.get_by_role('button', name='Ask Byte Bot', exact=True).click()
         page.get_by_text(wording, exact=False).wait_for()

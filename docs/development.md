@@ -15,6 +15,7 @@ Phases 01–05 are complete. Future changes should name their intended behavior 
 | Extraction and rules | `extraction.py`, `prompts.py`, `risk_rules.py`, `safety.py`, `intelligence.py`, `guidance.py`, `fixtures.py` |
 | Reports and follow-up | `reports.py`, `report_schemas.py`, `incident_routes.py`, `audit.py` |
 | Demo controls | `demo.py`, `frontend/src/demo.tsx` |
+| Hackathon presentation | `frontend/src/presentation.tsx`, `presentation-state.ts`, `presentation.css` |
 | Frontend screens | `frontend/src/main.tsx`, `investigation.tsx`, `results.tsx`, `report.tsx`, `incidents.tsx` |
 | Frontend shared code | `api.ts`, `investigation-types.ts`, `transaction-ui.tsx`, `styles.css` |
 | Verification | `backend/tests/`, root `pytest.ini` |
@@ -63,6 +64,6 @@ Reset is atomic and session-scoped. It preserves the owner cookie, clears owned 
 
 Use a branch for subsequent development, keep each change focused, and update the relevant guides and progress entry with actual results. Run checks from [testing](testing.md) appropriate to the change; avoid rerunning live-provider checks unless explicitly configured with synthetic evidence.
 
-Keep `.env` and local exports private. The repository intentionally includes the PRD, all phase guides, acceptance, architecture, and progress history so a fresh checkout contains the development context. Screenshots/reports previously generated under `.cache/` are not published; their generators and browser suites are included.
+Keep `.env` and local exports private. The repository includes the PRD, the [active phase plan](paytm-hackathon-plan.md), acceptance, architecture, and progress history. Screenshots/reports previously generated under `.cache/` are not published; their generators and browser suites are included.
 
 Use only Byte Bot's configured loopback ports **8000, 5174, 4174, 55433**. Never use or interrupt **5000, 5173, 3306**, or the original temporary PostgreSQL on **55432**. See [setup](setup.md) for explicit conflict handling. This repository documents a local demo, not a production deployment or real payment integration.

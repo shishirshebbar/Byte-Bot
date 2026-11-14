@@ -9,13 +9,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bytebot.fixtures import SCENARIOS
 from synthetic_images import scenario_screenshot
 
-BASE = os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174')
+BASE = os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174').rstrip('/')
+WORKSPACE = BASE + '/workspace'
 OUTPUT = Path('.cache/phase05')
 OUTPUT.mkdir(parents=True, exist_ok=True)
 
 
 def history(page):
-    page.goto(BASE)
+    page.goto(WORKSPACE)
     expect(page.locator('a.transaction')).to_have_count(8)
     expect(page.get_by_role('button', name='Load / reopen scenario', exact=True)).to_be_enabled()
 
@@ -128,7 +129,7 @@ with sync_playwright() as p:
     assert other.request.get(BASE + '/api/v1/investigations/' + foreign_case['id']).json() == other_state
     for case_id in cases.values():
         assert context.request.get(BASE + '/api/v1/investigations/' + case_id).status == 404
-    page.goto(BASE + '/investigations/' + cases['B'])
+    page.goto(WORKSPACE + '/investigations/' + cases['B'])
     page.get_by_role('heading', name='Investigation unavailable', exact=True).wait_for()
     # Fresh-reset four-minute rehearsal with a real CPU OCR screenshot.
     rehearsal_start = time.monotonic()
@@ -174,7 +175,7 @@ with sync_playwright() as p:
     # Desktop/mobile report and incident controls remain reachable without overflow.
     for route in ('/incidents', '/', '/investigations/' + case_id + '/report'):
         page.set_viewport_size({'width': 390, 'height': 844})
-        page.goto(BASE + route)
+        page.goto(WORKSPACE + ('' if route == '/' else route))
         if route == '/':
             expect(page.get_by_role('button', name='Reset demo', exact=True)).to_be_enabled()
             page.screenshot(path=str(OUTPUT / 'history-mobile.png'), full_page=True)
@@ -205,7 +206,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='Ask Byte Bot', exact=True).wait_for()
     # Catalog failure does not create a case and has a working retry.
     page.route('**/api/v1/demo/scenarios', lambda route: route.fulfill(status=503, json={'error': {'message': 'Synthetic catalog failure.'}}))
-    page.goto(BASE)
+    page.goto(WORKSPACE)
     page.get_by_role('button', name='Retry scenarios', exact=True).wait_for()
     page.unroute('**/api/v1/demo/scenarios')
     page.get_by_role('button', name='Retry scenarios', exact=True).click()

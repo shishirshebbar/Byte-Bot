@@ -2,7 +2,6 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 from psycopg.types.json import Jsonb
-from .analysis_store import status
 from .audit import record
 from .investigation_store import not_found
 from .investigation_schemas import Context
@@ -23,6 +22,8 @@ EXPLANATIONS = {
 
 
 def current_result(conn, case):
+    from .analysis_store import status
+
     run = status(conn, case)
     if not run or run['state'] != 'complete' or not run['result']:
         raise EvidenceError(409, 'analysis_required', 'Analyze the current saved information before generating or viewing a report.')
@@ -38,7 +39,7 @@ def retrieve(conn, case):
     return ReportSnapshot.model_validate(row['snapshot'])
 
 
-def generate(conn, case):
+def generate(conn, case, *, actor='user'):
     # Caller holds the case lock through snapshot creation and commit. Input
     # writers use this same lock, so a stale snapshot cannot be republished.
     run = current_result(conn, case)
@@ -73,7 +74,7 @@ def generate(conn, case):
     conn.execute('INSERT INTO incident_reports(id,investigation_id,input_revision,run_id,snapshot,generated_at) VALUES (%s,%s,%s,%s,%s,%s)',
                  (snapshot.id, case['id'], case['input_revision'], run['run_id'],
                   Jsonb(snapshot.model_dump(mode='json')), snapshot.generated_at))
-    record(conn, case['id'], 'report_generated', report_id=snapshot.id, input_revision=case['input_revision'])
+    record(conn, case['id'], 'report_generated', actor=actor, report_id=snapshot.id, input_revision=case['input_revision'])
     return snapshot, True
 
 

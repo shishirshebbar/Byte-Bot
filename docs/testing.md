@@ -65,9 +65,10 @@ BYTEBOT_WEB_URL=http://127.0.0.1:5174 .venv/bin/python backend/tests/browser_pha
 BYTEBOT_WEB_URL=http://127.0.0.1:5174 .venv/bin/python backend/tests/browser_phase03.py
 BYTEBOT_WEB_URL=http://127.0.0.1:5174 .venv/bin/python backend/tests/browser_phase04.py
 BYTEBOT_WEB_URL=http://127.0.0.1:5174 .venv/bin/python backend/tests/browser_phase05.py
+BYTEBOT_WEB_URL=http://127.0.0.1:5174 .venv/bin/python backend/tests/browser_presentation.py
 ```
 
-In PowerShell, set `$env:BYTEBOT_WEB_URL = 'http://127.0.0.1:5174'`, then invoke each script with `.\.venv\Scripts\python.exe`.
+In PowerShell, set `$env:BYTEBOT_WEB_URL = 'http://127.0.0.1:5174'`, then invoke each script with `.\.venv\Scripts\python.exe`. Pass the frontend origin. The first five scripts exercise `/workspace` and the presentation script exercises `/`. Use port 4174 for a production preview after building.
 
 | Suite | Main coverage |
 | --- | --- |
@@ -76,6 +77,9 @@ In PowerShell, set `$env:BYTEBOT_WEB_URL = 'http://127.0.0.1:5174'`, then invoke
 | Phase 03 | A–E categories, progress/reuse/retry, input invalidation, provenance, ownership |
 | Phase 04 | UTF-8 report snapshots/downloads, six statuses, ownership, stale reports, privacy |
 | Phase 05 | Scenario selection, isolated/repeated reset, screenshot-to-report rehearsal, keyboard/mobile |
+| Presentation | Three fresh Scenario B runs, one-approval report, UTF-8 download, report retry, saved follow-up and reopen, panel synchronization, ownership, reset, keyboard operation, four viewport sizes |
+
+The presentation suite records timings in `.cache/paytm-presentation/timings.json`. Its Scenario B measurement starts with the approval on the saved case and ends when the report has downloaded and **Bank Contacted** is saved. It checks report reopening after the measurement.
 
 Browser suites create synthetic session data in the running demo database. They do not reset the whole demo database. Screenshots, synthetic images, downloaded reports, and timings are local ignored artifacts under `.cache/phase01/` through `.cache/phase05/`. Regenerate them locally; they are not part of the published source. Historical progress descriptions of those files record earlier inspections, not publicly accessible attachments.
 

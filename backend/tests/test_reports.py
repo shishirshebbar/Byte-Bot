@@ -1,5 +1,6 @@
 """Phase 04 report, follow-up, privacy, ownership and atomic invalidation checks."""
 import json
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from uuid import uuid4
@@ -7,6 +8,9 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from bytebot.main import create_app
+from bytebot import reports
+from bytebot.analysis_store import claim
+from bytebot.analysis_worker import AnalysisWorker
 from bytebot.fixtures import FixtureProvider
 from bytebot.migrate import migrate
 from bytebot.seeds import seed
@@ -41,6 +45,88 @@ def generate_report(client, case):
 def events(client, case):
     with client.app.state.pool.connection() as conn:
         return conn.execute('SELECT * FROM audit_events WHERE investigation_id=%s ORDER BY id', (case['id'],)).fetchall()
+
+
+@pytest.mark.parametrize('approval_stage', ['queued', 'running', 'complete'])
+def test_approved_report_reuses_the_run_and_survives_reopen(client, approval_stage):
+    case = new_case(client, 'B')
+    url = BASE + case['id']
+    body = {'expected_revision': case['input_revision']}
+    pool = client.app.state.pool
+    queue = client.post(url + '/analyze', json=body).json()
+    assert queue['state'] == 'queued' and not queue['prepare_report'] and queue['report_id'] is None
+    run = claim(pool) if approval_stage != 'queued' else None
+    worker = AnalysisWorker(pool, client.app.state.extractor)
+    if approval_stage == 'complete':
+        asyncio.run(worker.execute(run))
+        saved = client.get(url).json()['analysis']
+        assert saved['state'] == 'complete' and not saved['prepare_report'] and saved['report_id'] is None
+        assert client.get(report_url(case)).status_code == 404
+    with ThreadPoolExecutor(3) as executor:
+        responses = list(executor.map(lambda _: client.post(url + '/analyze', json={**body, 'prepare_report': True}), range(3)))
+    assert all(r.status_code == 202 and r.json()['prepare_report'] and r.json()['run_id'] == queue['run_id'] for r in responses)
+    assert client.post(url + '/analyze', json=body).json()['prepare_report']
+    if approval_stage != 'complete':
+        run = run or claim(pool)
+        asyncio.run(worker.execute(run))
+    saved = client.get(url).json()['analysis']
+    report = client.get(report_url(case)).json()
+    assert saved['report_id'] == report['id'] and saved['result'] == report['assessment']
+    assert saved['run_id'] == report['run_id'] == queue['run_id']
+    assert [(e['action'], e['actor']) for e in events(client, case) if e['action'] in ('analysis_completed', 'report_generated')] == [
+        ('analysis_completed', 'system'), ('report_generated', 'system')]
+    assert client.post(report_url(case), json=body).status_code == 200
+    assert '₹5,000.00' in client.get(report_url(case) + '?format=txt').text
+
+
+def test_automatic_report_failure_keeps_assessment_and_allows_retry(client, monkeypatch):
+    case = new_case(client, 'B')
+    url = BASE + case['id']
+    body = {'expected_revision': case['input_revision']}
+    assert client.post(url + '/analyze', json={**body, 'prepare_report': True}).status_code == 202
+    pool = client.app.state.pool
+    original = reports.record
+
+    def reject_system_audit(*args, actor=None, **kwargs):
+        if actor == 'system':
+            # Fail after the report row was inserted. The savepoint must
+            # roll it back without rolling back the assessment.
+            args[0].execute('SELECT 1 / 0')
+        return original(*args, actor=actor, **kwargs)
+
+    monkeypatch.setattr(reports, 'record', reject_system_audit)
+    asyncio.run(AnalysisWorker(pool, client.app.state.extractor).execute(claim(pool)))
+    saved = client.get(url).json()['analysis']
+    assert saved['prepare_report'] and saved['state'] == 'complete' and saved['report_id'] is None
+    assert saved['result']['category'] == 'High concern'
+    assert client.get(report_url(case)).status_code == 404
+    report = generate_report(client, case)
+    assert client.get(url).json()['analysis']['report_id'] == report['id']
+    assert [e['actor'] for e in events(client, case) if e['action'] == 'report_generated'] == ['user']
+
+
+@pytest.mark.parametrize('clear_case', ['edit', 'reset'])
+def test_approved_report_is_fenced_with_the_analysis(client, prepared, clear_case):
+    case = new_case(client, 'B')
+    url = BASE + case['id']
+    body = {'expected_revision': case['input_revision']}
+    assert client.post(url + '/analyze', json={**body, 'prepare_report': 'true'}).status_code == 422
+    assert client.post(report_url(case), json={**body, 'prepare_report': True}).status_code == 422
+    assert client.post(url + '/analyze', json={**body, 'prepare_report': True}).status_code == 202
+    pool = client.app.state.pool
+    run = claim(pool)
+    with TestClient(create_app(prepared, worker_enabled=False)) as other:
+        other.get('/api/v1/transactions')
+        assert other.post(url + '/analyze', json={**body, 'prepare_report': True}).status_code == 404
+        assert other.get(report_url(case)).status_code == 404
+    if clear_case == 'edit':
+        assert client.patch(url + '/context', json={**body, 'knows_sender': 'yes'}).json()['analysis'] is None
+        assert client.post(url + '/analyze', json={**body, 'prepare_report': True}).status_code == 409
+    else:
+        assert client.post('/api/v1/demo/reset').status_code == 200
+    asyncio.run(AnalysisWorker(pool, client.app.state.extractor).execute(run))
+    assert client.get(report_url(case)).status_code == (409 if clear_case == 'edit' else 404)
+    assert all(e['action'] != 'report_generated' for e in events(client, case))
 
 
 def test_complete_report_utf8_and_idempotency(client):

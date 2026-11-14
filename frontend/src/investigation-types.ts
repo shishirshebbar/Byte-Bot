@@ -14,5 +14,5 @@ export type Assessment = {
   rule_version: string; triggered_rules: string[]; generated_at: string; provider_mode: string; extraction_status: string;
   intelligence_matches: { identifier: string; source_label: string; reported_at: string; match_type: string; limitations: string; incident_reference: string }[];
 };
-export type Analysis = { run_id: string; input_revision: number; state: 'queued' | 'running' | 'complete' | 'failed'; stage: string; error_code: string | null; notices: string[]; result: Assessment | null };
+export type Analysis = { run_id: string; input_revision: number; state: 'queued' | 'running' | 'complete' | 'failed'; stage: string; error_code: string | null; notices: string[]; result: Assessment | null; prepare_report: boolean; report_id: string | null };
 export type Investigation = { id: string; transaction_id: string; transaction: Transaction; input_revision: number; case_status: CaseStatus; status_revision: number; context: Context; evidence: Evidence[]; analysis: Analysis | null };

@@ -5,6 +5,7 @@ from .analysis_schemas import RULE_VERSION
 from .investigation_store import owned_case
 from .ocr import EvidenceError
 from .audit import record
+from . import reports
 
 
 class LostLease(Exception):
@@ -17,28 +18,48 @@ def status(conn, case):
     if not row:
         return None
     result = conn.execute('SELECT data FROM risk_assessments WHERE run_id=%s', (row['id'],)).fetchone()
+    report = conn.execute('SELECT id FROM incident_reports WHERE run_id=%s AND investigation_id=%s AND input_revision=%s',
+                          (row['id'], case['id'], case['input_revision'])).fetchone() if row['state'] == 'complete' else None
     extraction = row['outputs'].get('message_analysis', {})
     return {'run_id': row['id'], 'input_revision': row['input_revision'], 'state': row['state'],
             'stage': row['stage'], 'error_code': row['error_code'], 'notices': extraction.get('notices', []),
-            'result': result['data'] if result and row['state'] == 'complete' else None}
+            'result': result['data'] if result and row['state'] == 'complete' else None,
+            'prepare_report': row['prepare_report'], 'report_id': report['id'] if report else None}
 
 
-def enqueue(conn, owner, case_id, revision, mode):
+def prepare_approved_report(conn, case):
+    # A savepoint isolates a report failure from the completed assessment and
+    # its audit. The client can use the regular report endpoint to retry.
+    try:
+        with conn.transaction():
+            reports.generate(conn, case, actor='system')
+    except Exception:
+        # Do not log exceptions that may contain evidence. A completed,
+        # approved run with no report ID is the retry signal.
+        pass
+
+
+def enqueue(conn, owner, case_id, revision, mode, prepare_report):
     case = owned_case(conn, owner, case_id, revision)
     if conn.execute("SELECT 1 FROM evidence WHERE investigation_id=%s AND review_state<>'confirmed' LIMIT 1", (case_id,)).fetchone():
         raise EvidenceError(409, 'evidence_review_required', 'Confirm or remove every screenshot before analyzing.')
     row = conn.execute('SELECT * FROM analysis_runs WHERE investigation_id=%s AND input_revision=%s',
                        (case_id, revision)).fetchone()
     if row is None:
-        conn.execute("INSERT INTO analysis_runs (id,investigation_id,input_revision,state,provider_mode,rule_version) "
-                     "VALUES (%s,%s,%s,'queued',%s,%s)", (uuid4(), case_id, revision, mode, RULE_VERSION))
+        conn.execute("INSERT INTO analysis_runs (id,investigation_id,input_revision,state,provider_mode,rule_version,prepare_report) "
+                     "VALUES (%s,%s,%s,'queued',%s,%s,%s)", (uuid4(), case_id, revision, mode, RULE_VERSION, prepare_report))
     elif row['state'] == 'failed':
         conn.execute("UPDATE analysis_runs SET state='queued',stage='queued',attempts=0,lease_token=NULL,"
                      "lease_until=NULL,outputs='{}',stage_durations='{}',stage_started_at=NULL,error_code=NULL,provider_mode=%s,updated_at=now() WHERE id=%s",
                      (mode, row['id']))
         conn.execute('DELETE FROM extracted_signals WHERE run_id=%s', (row['id'],))
         conn.execute('DELETE FROM risk_assessments WHERE run_id=%s', (row['id'],))
+    if row and prepare_report and not row['prepare_report']:
+        conn.execute('UPDATE analysis_runs SET prepare_report=true WHERE id=%s', (row['id'],))
     current = status(conn, case)
+    if prepare_report and current['state'] == 'complete' and not current['report_id']:
+        prepare_approved_report(conn, case)
+        current = status(conn, case)
     if current['state'] == 'queued':
         conn.execute("UPDATE investigations SET workflow_state='analysis_queued' WHERE id=%s", (case_id,))
     return current
@@ -110,12 +131,15 @@ def save_stage(pool, run, stage, output=None):
 
 def publish(pool, run, result):
     with pool.connection() as conn:
-        fenced(conn, run)
+        case = fenced(conn, run)
         conn.execute('INSERT INTO risk_assessments (run_id,data) VALUES (%s,%s) ON CONFLICT (run_id) DO UPDATE SET data=excluded.data',
                      (run['id'], Jsonb(result)))
-        conn.execute("UPDATE analysis_runs SET state='complete',stage='complete',lease_token=NULL,lease_until=NULL,updated_at=now() WHERE id=%s", (run['id'],))
+        completed = conn.execute("UPDATE analysis_runs SET state='complete',stage='complete',lease_token=NULL,"
+                                 "lease_until=NULL,updated_at=now() WHERE id=%s RETURNING prepare_report", (run['id'],)).fetchone()
         conn.execute("UPDATE investigations SET workflow_state='results_ready' WHERE id=%s", (run['investigation_id'],))
         record(conn, run['investigation_id'], 'analysis_completed', run_id=run['id'], input_revision=run['input_revision'])
+        if completed['prepare_report']:
+            prepare_approved_report(conn, case)
 
 
 def fail(pool, run):

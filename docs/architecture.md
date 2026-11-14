@@ -26,6 +26,12 @@ Paths below are relative to `/api/v1`. Derive the current user from a server-iss
 | 04 | `POST /investigations/{id}/report`, `GET /investigations/{id}/report` | Generate or retrieve the current report. Request `?format=txt` on GET for a UTF-8 attachment. |
 | 05 | `GET /demo/scenarios`, `POST /demo/scenarios/{id}/load`, `POST /demo/reset` | List and load synthetic scenario data. Reset removes session cases and restores its transaction seed data. |
 
+### Presentation report approval
+
+- The Paytm-style presentation passes `prepare_report: true` to the analyze endpoint when the customer approves analysis and a private report together. Requests omitting it still default to analysis only. Migration 005 stores approval on the existing run for its input revision. Later analysis-only requests keep any approval already saved for that run.
+- A worker completing an approved run creates the same immutable snapshot as the manual report endpoint. An approval arriving after completion reuses the stored assessment. Report creation uses a savepoint, so an approved run with a completed assessment and no report ID can retry through the existing report endpoint. Automatic generation records a system audit event. A manual generation or successful retry records a user event.
+- Analyze and investigation responses expose `prepare_report` and nullable `report_id` on the current run. The phone and presenter panel derive readiness from that report ID. The UTF-8 download checks the returned report identity. Case status comes from its separate user save and survives input edits.
+
 Use a stable API error envelope with a machine-readable code and a display-safe message. Return `409` when a report is requested before a current result exists or when analysis is blocked by an unreviewed screenshot. Use `422` for invalid field values, `413` for oversized evidence, and `415` for unsupported screenshot formats.
 
 ### Implemented Phase 02 wire details

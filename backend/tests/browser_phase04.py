@@ -6,7 +6,8 @@ from playwright.sync_api import sync_playwright, expect
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bytebot.fixtures import SCENARIOS
 
-BASE = os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174')
+BASE = os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174').rstrip('/')
+WORKSPACE = BASE + '/workspace'
 OUTPUT = Path('.cache/phase04')
 OUTPUT.mkdir(parents=True, exist_ok=True)
 
@@ -24,11 +25,11 @@ def create(context, scenario='A', index=0):
 
 
 def analyze(page, case, category):
-    page.goto(BASE + '/investigations/' + case['id'])
+    page.goto(WORKSPACE + '/investigations/' + case['id'])
     page.get_by_role('button', name='Analyze saved information', exact=True).click()
     page.get_by_role('heading', name=category, exact=True).wait_for()
     page.get_by_role('button', name='Generate / view report', exact=True).click()
-    page.wait_for_url(BASE + '/investigations/' + case['id'] + '/report')
+    page.wait_for_url(WORKSPACE + '/investigations/' + case['id'] + '/report')
     page.get_by_role('button', name='Download text report', exact=True).wait_for()
 
 
@@ -40,11 +41,11 @@ with sync_playwright() as p:
     page.on('pageerror', lambda e: errors.append(str(e)))
     # Empty list for an initialized session; no implicit investigation or report creation.
     context.request.get(BASE + '/api/v1/transactions')
-    page.goto(BASE + '/incidents')
+    page.goto(WORKSPACE + '/incidents')
     page.get_by_text('No investigations yet.', exact=False).wait_for()
     case = create(context)
     api = BASE + '/api/v1/investigations/' + case['id']
-    report_url = BASE + '/investigations/' + case['id'] + '/report'
+    report_url = WORKSPACE + '/investigations/' + case['id'] + '/report'
     page.goto(report_url)
     page.get_by_role('heading', name='Analysis needed', exact=True).wait_for()
     analyze(page, case, 'Needs verification')

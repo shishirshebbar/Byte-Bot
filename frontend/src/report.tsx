@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError, get } from './api';
 import type { Transaction } from './api';
-import type { Assessment, CaseStatus, Context } from './investigation-types';
+import type { Assessment, CaseStatus, Context, Investigation } from './investigation-types';
 import { date, money, Status } from './transaction-ui';
+import { PresentationState } from './presentation-state';
+import { useScreenPath } from './screen-path';
 
 type Report = {
   id: string; investigation_id: string; input_revision: number; run_id: string; generated_at: string;
@@ -12,6 +14,24 @@ type Report = {
   extracted_signals: { evidence_id: string; kind: string; quote: string; value: string | null }[];
   assessment: Assessment; unknowns: string[]; notices: string[];
 };
+
+export async function downloadReport(caseId: string, reportId: string) {
+  const response = await fetch(`/api/v1/investigations/${caseId}/report?format=txt`, { credentials: 'same-origin' });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new ApiError(response.status, body?.error?.message || 'The report is unavailable. Reload the saved case.');
+  }
+  const filename = `bytebot-report-${reportId}.txt`;
+  if (response.headers.get('content-disposition') !== `attachment; filename="${filename}"`) {
+    throw new ApiError(409, 'The saved report changed. Review it before downloading.');
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 const labels: Record<keyof Context, string> = {
   expected_payment: 'Expected payment', knows_sender: 'Knows sender', repayment_requested: 'Repayment requested',
   contact_channels: 'Contact channels', requested_destination_type: 'Requested destination type', requested_vpa: 'Requested UPI ID',
@@ -21,16 +41,36 @@ function answer(value: string | string[] | null) { return value === null || valu
 
 export function ReportPage() {
   const { id } = useParams();
-  const [data, setData] = useState<Report>();
+  const screen = useScreenPath();
+  const { showCase } = useContext(PresentationState) ?? {};
+  const [snapshot, setData] = useState<Report>();
+  const data = snapshot?.investigation_id === id ? snapshot : undefined;
   const [error, setError] = useState<ApiError>();
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [downloadError, setDownloadError] = useState('');
   useEffect(() => {
     const abort = new AbortController(); setData(undefined); setError(undefined); setDownloadError('');
-    get<Report>(`/investigations/${id}/report`, abort.signal).then(next => { if (!abort.signal.aborted) setData(next); }).catch(e => { if (!abort.signal.aborted) setError(e); });
+    async function load() {
+      try {
+        const next = await get<Report>(`/investigations/${id}/report`, abort.signal);
+        if (abort.signal.aborted) return;
+        setData(next);
+      } catch (e) {
+        if (abort.signal.aborted) return;
+        setError(e as ApiError);
+      }
+      if (!showCase || abort.signal.aborted) return;
+      try {
+        const saved = await get<Investigation>(`/investigations/${id}`, abort.signal);
+        if (!abort.signal.aborted) showCase(saved);
+      } catch {
+        if (!abort.signal.aborted) showCase(undefined);
+      }
+    }
+    void load();
     return () => abort.abort();
-  }, [id, attempt]);
+  }, [id, attempt, showCase]);
   useEffect(() => {
     const refresh = () => { setData(undefined); setAttempt(v => v + 1); };
     window.addEventListener('focus', refresh);
@@ -40,25 +80,18 @@ export function ReportPage() {
     if (!data) return;
     setBusy(true); setDownloadError('');
     try {
-      const response = await fetch(`/api/v1/investigations/${id}/report?format=txt`, { credentials: 'same-origin' });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
+      await downloadReport(data.investigation_id, data.id);
+    } catch (e) {
+      if (e instanceof ApiError && [404, 409].includes(e.status)) {
         setData(undefined); setAttempt(v => v + 1);
-        throw new Error(body?.error?.message || 'The report is unavailable. Reload the saved case.');
       }
-      const filename = `bytebot-report-${data.id}.txt`;
-      if (!response.headers.get('content-disposition')?.includes(filename)) {
-        setData(undefined); setAttempt(v => v + 1); throw new Error('The saved report changed. Review it before downloading.');
-      }
-      const url = URL.createObjectURL(await response.blob());
-      const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) { setDownloadError((e as Error).message); }
+      setDownloadError((e as Error).message);
+    }
     finally { setBusy(false); }
   }
   const a = data?.assessment;
-  return <><Link className="back" to={`/investigations/${id}/results`}>← Investigation results</Link><div className="eyebrow">BYTE BOT · USER-OWNED DOWNLOAD</div><h1>Incident report</h1>
-    {error && <div className="error-box" role="alert"><h2>{error.status === 409 ? 'Analysis needed' : 'Report unavailable'}</h2><p>{error.message}</p><p>Generate a report from a completed current result.</p><button onClick={() => setAttempt(v => v + 1)}>Reload report</button><p><Link to={`/investigations/${id}`}>Review saved context and evidence</Link></p></div>}
+  return <><Link className="back" to={screen(`/investigations/${id}/results`)}>← Investigation results</Link><div className="eyebrow">BYTE BOT · USER-OWNED DOWNLOAD</div><h1>Incident report</h1>
+    {error && <div className="error-box" role="alert"><h2>{error.status === 409 ? 'Analysis needed' : 'Report unavailable'}</h2><p>{error.message}</p><p>Generate a report from a completed current result.</p><button onClick={() => setAttempt(v => v + 1)}>Reload report</button><p><Link to={screen(`/investigations/${id}`)}>Review saved context and evidence</Link></p></div>}
     {!data && !error && <p role="status">Loading saved report…</p>}
     {data && a && <>
       <section className="panel"><div className="section-body"><p><strong>{a.category}</strong> · {data.transaction.status} payment</p><p className="primary-guidance">{a.recommendations[0]}</p><p><strong>Report ID:</strong> {data.id}</p><p>Case ID: {data.investigation_id} · Input revision: {data.input_revision}</p><p>Analysis run: {data.run_id}</p><p>Generated {date(data.generated_at)} IST</p><p>Status at generation: {data.status_at_generation}</p>

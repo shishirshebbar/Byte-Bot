@@ -11,4 +11,4 @@ router = APIRouter(prefix='/investigations')
 def analyze(case_id: UUID, payload: AnalyzeRequest, request: Request):
     with request.app.state.pool.connection() as conn:
         return enqueue(conn, owner_for(conn, request), case_id, payload.expected_revision,
-                       request.app.state.extractor.mode)
+                       request.app.state.extractor.mode, payload.prepare_report)

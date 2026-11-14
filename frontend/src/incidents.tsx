@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, get, json } from './api';
 import { date, money, Status } from './transaction-ui';
 import type { Assessment, CaseStatus, Investigation } from './investigation-types';
 import type { Transaction } from './api';
+import { PresentationState, usePhoneLock } from './presentation-state';
+import { useScreenPath } from './screen-path';
 
 export const caseStatuses: CaseStatus[] = ['Open', 'Bank Contacted', 'Reported', 'Awaiting Response', 'Resolved', 'Closed'];
 type SavedStatus = { case_status: CaseStatus; status_revision: number };
@@ -15,18 +17,20 @@ export function StatusControl({ id, value, onChange }: { id: string; value: Save
   const [error, setError] = useState('');
   const [conflict, setConflict] = useState(false);
   const [notice, setNotice] = useState('');
+  const presentation = useContext(PresentationState);
+  usePhoneLock(busy || draft !== value.case_status);
   useEffect(() => { setDraft(value.case_status); }, [value.case_status, value.status_revision]);
   async function save() {
     setBusy(true); setError(''); setNotice('');
     try {
       const next = await json<Incident>(`/incidents/${id}/status`, 'PATCH', { status: draft, expected_status_revision: value.status_revision });
-      onChange(next); setNotice('Case status saved.');
+      onChange(next); presentation?.showStatus(id, next); setNotice('Case status saved.');
     } catch (e) { setError((e as Error).message); setConflict(e instanceof ApiError && e.status === 409); }
     finally { setBusy(false); }
   }
   async function reload() {
     setBusy(true); setError('');
-    try { const next = await get<Investigation>(`/investigations/${id}`, new AbortController().signal); onChange(next); setDraft(next.case_status); setConflict(false); setNotice('Saved case status reloaded.'); }
+    try { const next = await get<Investigation>(`/investigations/${id}`, new AbortController().signal); onChange(next); presentation?.showStatus(id, next); setDraft(next.case_status); setConflict(false); setNotice('Saved case status reloaded.'); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -41,6 +45,7 @@ export function StatusControl({ id, value, onChange }: { id: string; value: Save
 }
 
 export function IncidentsPage() {
+  const screen = useScreenPath();
   const [data, setData] = useState<Incident[]>();
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -50,7 +55,7 @@ export function IncidentsPage() {
     return () => abort.abort();
   }, [attempt]);
   return <><div className="eyebrow">BYTE BOT · FOLLOW-UP</div><h1>My Incidents</h1><p className="intro">Your saved investigations and the actions you report taking.</p>
-    <Link to="/">View transactions</Link>
+    <Link to={screen('/')}>View transactions</Link>
     {error && <div role="alert" className="error-box"><p>{error}</p><button onClick={() => setAttempt(v => v + 1)}>Reload incidents</button></div>}
     {!data && !error && <p role="status">Loading incidents…</p>}
     {data?.length === 0 && <p className="notice">No investigations yet. Open a transaction and choose Ask Byte Bot.</p>}
@@ -58,7 +63,7 @@ export function IncidentsPage() {
       <div className="panel-heading"><h2>{money(item.transaction)} · {item.transaction.sender_name}</h2><Status value={item.transaction.status} /></div>
       <div className="section-body"><p>Created {date(item.created_at)} IST</p><p>Current assessment: <strong>{item.category || 'Analysis needed'}</strong></p>
         <StatusControl id={item.id} value={item} onChange={next => setData(items => items?.map(i => i.id === item.id ? { ...i, case_status: next.case_status, status_revision: next.status_revision } : i))} />
-        <div className="actions"><Link to={`/investigations/${item.id}`}>Reopen case</Link><Link to={`/investigations/${item.id}/results`}>View results</Link>{item.category && <Link to={`/investigations/${item.id}/report`}>View saved report</Link>}</div>
+        <div className="actions"><Link to={screen(`/investigations/${item.id}`)}>Reopen case</Link><Link to={screen(`/investigations/${item.id}/results`)}>View results</Link>{item.category && <Link to={screen(`/investigations/${item.id}/report`)}>View saved report</Link>}</div>
       </div></article>)}
   </>;
 }

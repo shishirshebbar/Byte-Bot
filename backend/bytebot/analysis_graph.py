@@ -65,8 +65,7 @@ def build_graph(pool, provider):
     async def incident_resolution(state):
         run = state['run']
         save_stage(pool, run, 'incident_resolution')
-        # Only schema-validated, source-bound rule output is displayed. No free
-        # model narrative, report, external submission, or case status action.
+        # Publish source-bound guidance and prepare any approved private report.
         result = resolve(state['result'], state['transaction'], state['context'])
         save_stage(pool, run, 'incident_resolution', {'ready': True})
         publish(pool, run, result)

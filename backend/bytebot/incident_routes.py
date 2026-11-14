@@ -1,7 +1,7 @@
 from typing import Literal
 from uuid import UUID
 from fastapi import APIRouter, Request, Response
-from .analysis_schemas import AnalyzeRequest
+from .analysis_schemas import RevisionRequest
 from .audit import record
 from .investigation_store import owner_for, owned_case
 from .ocr import EvidenceError
@@ -48,7 +48,7 @@ def update_status(case_id: UUID, payload: StatusPatch, request: Request):
 
 
 @router.post('/investigations/{case_id}/report', response_model=ReportSnapshot)
-def create_report(case_id: UUID, payload: AnalyzeRequest, request: Request, response: Response):
+def create_report(case_id: UUID, payload: RevisionRequest, request: Request, response: Response):
     with request.app.state.pool.connection() as conn:
         case = owned_case(conn, owner_for(conn, request), case_id, payload.expected_revision)
         report, created = generate(conn, case)

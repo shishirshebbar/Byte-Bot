@@ -8,7 +8,8 @@ from playwright.sync_api import sync_playwright, expect
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bytebot.fixtures import SCENARIOS
 
-BASE = os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174')
+BASE = os.environ.get('BYTEBOT_WEB_URL', 'http://127.0.0.1:5174').rstrip('/')
+WORKSPACE = BASE + '/workspace'
 OUTPUT = Path('.cache/phase03')
 OUTPUT.mkdir(parents=True, exist_ok=True)
 
@@ -33,7 +34,7 @@ with sync_playwright() as p:
         page.on('pageerror', lambda error: errors.append(str(error)))
         case = create_case(context, scenario)
         api = '/api/v1/investigations/' + case['id']
-        intake = BASE + '/investigations/' + case['id']
+        intake = WORKSPACE + '/investigations/' + case['id']
         page.goto(intake)
         page.get_by_role('heading', name='Let’s understand what happened').wait_for()
         analyze = page.get_by_role('button', name='Analyze saved information', exact=True)
@@ -98,7 +99,7 @@ with sync_playwright() as p:
         response = context.request.post(BASE + api + '/evidence', data={'type': 'message', 'text': SCENARIOS['E']['text'], 'expected_revision': case['input_revision']})
         revision = response.json()['input_revision']
         context.request.post(BASE + api + '/analyze', data={'expected_revision': revision})
-        page.goto(BASE + '/investigations/' + case['id'] + '/results')
+        page.goto(WORKSPACE + '/investigations/' + case['id'] + '/results')
         page.get_by_role('heading', name='Unable to assess', exact=True).wait_for()
         expect(page.get_by_text(status, exact=True)).to_be_visible()
         page.get_by_role('heading', name='Safety warning', exact=True).wait_for()
@@ -120,7 +121,7 @@ with sync_playwright() as p:
         else:
             route.continue_()
     page.route('**' + api, progress)
-    page.goto(BASE + '/investigations/' + case['id'] + '/results')
+    page.goto(WORKSPACE + '/investigations/' + case['id'] + '/results')
     page.get_by_role('heading', name='Investigation in progress', exact=True).wait_for()
     expect(page.locator('[role=status]')).to_have_text('Reviewing confirmed evidence')
     phase[0] = 'failed'

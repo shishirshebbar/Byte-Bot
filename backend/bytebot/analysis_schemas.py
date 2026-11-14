@@ -25,9 +25,13 @@ class Extraction(BaseModel):
     claims: list[Claim] = Field(default_factory=list, max_length=200)
 
 
-class AnalyzeRequest(BaseModel):
+class RevisionRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
     expected_revision: int = Field(ge=0, strict=True)
+
+
+class AnalyzeRequest(RevisionRequest):
+    prepare_report: bool = Field(default=False, strict=True)
 
 
 class Finding(BaseModel):
@@ -61,3 +65,5 @@ class AnalysisStatus(BaseModel):
     error_code: str | None = None
     notices: list[str] = Field(default_factory=list)
     result: Assessment | None = None
+    prepare_report: bool
+    report_id: UUID | None = None

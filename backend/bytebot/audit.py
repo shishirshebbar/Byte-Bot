@@ -15,7 +15,7 @@ ALLOWED = {
 }
 
 
-def record(conn, case_id, action, **metadata):
+def record(conn, case_id, action, *, actor=None, **metadata):
     schema = ALLOWED[action]
     if set(metadata) != set(schema):
         raise ValueError('Invalid audit metadata')
@@ -33,4 +33,4 @@ def record(conn, case_id, action, **metadata):
                 raise ValueError('Invalid audit enum')
             safe[key] = value
     conn.execute('INSERT INTO audit_events(investigation_id,actor,action,metadata) VALUES (%s,%s,%s,%s)',
-                 (case_id, 'system' if action == 'analysis_completed' else 'user', action, Jsonb(safe)))
+                 (case_id, actor or ('system' if action == 'analysis_completed' else 'user'), action, Jsonb(safe)))
