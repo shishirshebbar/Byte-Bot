@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from .db import make_pool
 from .settings import DATABASE_URL, GEMINI_API_KEY, GEMINI_MODEL, EXTRACTION_MODE, SARVAM_API_KEY, SARVAM_CHAT_MODEL
 from .extraction import GeminiProvider
@@ -55,6 +56,15 @@ def create_app(database_url=DATABASE_URL, ocr_adapter=None, extraction_provider=
 
     app = FastAPI(title="Byte Bot", lifespan=lifespan)
     install_errors(app)
+    
+    # Configure CORS for cross-origin requests (e.g., from Railway frontend to backend)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # In production, restrict to known frontend domains
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.include_router(router, prefix="/api/v1")
     app.include_router(investigation_router, prefix="/api/v1")
     app.include_router(analysis_router, prefix="/api/v1")
