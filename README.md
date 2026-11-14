@@ -82,6 +82,7 @@ Open **http://127.0.0.1:5174** for the split-screen Paytm-style presentation, **
 | --- | --- |
 | [Setup](docs/setup.md) | Installation, environment, database, startup, optional integrations |
 | [Testing](docs/testing.md) | Backend/build checks, migration/seed repeatability, browser/OCR/provider checks |
+| [Use cases](docs/use-cases.md) | Every use case and test case with inputs and expected results |
 | [Development](docs/development.md) | Code map, dependency maintenance, ownership and evidence invariants |
 | [Demo](docs/demo.md) | Scenarios A–E, screenshot walkthrough, reset |
 | [Architecture](docs/architecture.md) | Implemented APIs, storage, concurrency, and data flow |
