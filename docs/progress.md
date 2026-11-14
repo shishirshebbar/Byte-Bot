@@ -482,3 +482,22 @@ Branch `teammate-phase-0-1`. Plan: [teammate plan](teammate-plan.md).
 - **Not run.** The seven earlier browser suites (they need a fixture-mode API).
 - **Note.** The RBI discussion-paper point from the pitch is not cited in the docs yet; confirm the exact source and wording first.
 - **Environment.** PostgreSQL still runs on **55434** because Windows refused to bind 55433; `.env` points there.
+
+## 2026-11-14 — Railway deployment configuration
+
+- **Deployment files created:**
+  - `Procfile` — Railway entrypoint: `bash backend/start.sh`
+  - `railway.json` — Nixpacks builder configuration for Railway
+  - `.railwayignore` — excludes `.cache/`, `.venv/`, `node_modules/`, `.pytest_cache/`, etc.
+  - `backend/start.sh` — shell script: pip install, migrations, seed, uvicorn start
+  - `docs/RAILWAY_DEPLOYMENT.md` — comprehensive 5-minute quickstart with troubleshooting
+- **OCR and Sarvam verification complete:**
+  - Real OCR smoke test: legible 6.75s, unreadable 0.84s (CPU, models cached)
+  - Live Sarvam: text-to-speech 2.01s, speech-to-text 0.42s, translate 0.77s, extraction 0.30–0.96s (synthetic evidence only)
+- **Remaining before go-live:**
+  1. Commit and push deployment files to GitHub
+  2. Link Railway project to GitHub repo (already done per user)
+  3. Add PostgreSQL plugin in Railway (click **Add Plugin**)
+  4. Set environment variables in Railway dashboard (see guide)
+  5. Click **Trigger Deploy** — Railway will build and start both backend and frontend
+  6. Verify at `https://your-railway-app.railway.app/`
