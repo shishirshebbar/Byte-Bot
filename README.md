@@ -1,8 +1,19 @@
 # Byte Bot
 
-Byte Bot is an AI fraud-resolution teammate for unexpected UPI credits in a simulated Paytm-style app. It goes beyond answering questions. It understands the payment and the customer's story (including Hindi and Hinglish voice notes via Sarvam AI), decides with explainable rules, takes consented actions on simulated Paytm, bank, and 1930 systems, and hands off to a human console only when policy requires it.
+Byte Bot **verifies the story behind a suspicious payment**. It is an AI teammate for unexpected UPI credits in a simulated Paytm-style app. It does not claim to detect scammers. It checks whether the money actually arrived, what the person is asking for, whether that request would send money out of the customer's account, whether there are pressure tactics or fraud-intelligence links, and what the safest next action is. It understands the payment and the customer's story (including Hindi and Hinglish voice notes via Sarvam AI), decides with explainable rules, takes consented actions on simulated Paytm, bank, and 1930 systems, and hands off to a human console only when policy requires it.
 
-**Status:** AI-teammate phases 0–9 are complete. The last full verification passed 186 backend tests, the frontend build, seven browser suites on the production preview, and real CPU OCR. Across 12 end-to-end scenarios, the evaluation shows 100% category accuracy, 100% escalation precision and recall, 75% handled without a person, and 0 policy violations, both offline and with live Sarvam extraction. See [progress](docs/progress.md) and the [demo script](docs/demo.md).
+**Status:** AI-teammate phases 0–9 and the four-case story verification are complete. The latest full run passed 209 backend tests and the frontend build. Across 15 end-to-end scenarios, the evaluation shows 100% category accuracy, 100% escalation precision and recall, 80% handled without a person, and 0 policy violations. See [progress](docs/progress.md) and the [demo script](docs/demo.md).
+
+## The four cases
+
+| Case | What Byte Bot finds | Verdict |
+| --- | --- | --- |
+| 1. Fake payment claim ("I sent you ₹5,000") | No matching credit in the Paytm history (`POST /api/v1/claim-check`; nothing is stored) | **Scam warning**: don't send money back |
+| 2. Real credit, suspicious repayment request | The credit is genuine; the request is unverified (unexpected, urgent, repayment) | **Caution**: don't make a separate payment; let the bank or Paytm reverse it |
+| 3. Real credit, malicious refund mechanism | A QR code (decoded locally from `upi://pay`), a collect request, or "enter your UPI PIN to receive" would pay *out* | **Dangerous payment action**: don't proceed |
+| 4. Real credit, same UPI ID, suspicious network | The sender is linked in the simulated fraud graph to reported incidents and the accounts that received repayments; a same-ID match never reduces concern | **Suspicious network**: let your bank handle the reversal |
+
+Every assessment answers six questions (did it arrive, what is asked, does it send money out, social engineering, fraud intelligence, safest action). The verdict banner is presentation only: Python rules still assign the category.
 
 ## Features
 

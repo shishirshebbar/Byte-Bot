@@ -5,7 +5,9 @@ from .intelligence import normalize
 from .extraction import VPA
 
 PRESSURE = {'urgency': 'urgency', 'threat': 'threat', 'bank_avoidance': 'isolation', 'secrecy': 'isolation'}
-DANGEROUS = {'credential_request', 'collect_approval', 'remote_access', 'screen_sharing'}
+DANGEROUS = {'credential_request', 'collect_approval', 'remote_access', 'screen_sharing', 'qr_payment', 'pin_to_receive'}
+# Requests whose mechanism starts a payment *out of* the customer's account.
+OUTGOING = {'qr_payment', 'pin_to_receive', 'collect_approval'}
 LABELS = {
     'urgency': 'Urgency was reported or observed.', 'threat': 'Threats were reported or observed.',
     'bank_avoidance': 'A request to avoid contacting the bank was reported or observed.',
@@ -15,12 +17,14 @@ LABELS = {
     'collect_approval': 'A request to approve a collect/payment request was detected.',
     'remote_access': 'A request to enable remote access was detected.',
     'screen_sharing': 'A request to share the screen was detected.',
+    'qr_payment': 'A request to scan a QR code to return money was detected. Scanning a UPI QR sends money; it never receives it.',
+    'pin_to_receive': 'A request to enter a UPI PIN to receive or return money was detected. A PIN only ever authorises a payment out.',
 }
 # Explainable score weights (score-1). The score summarises supported signals for
 # display; the categorical decision table below never reads it.
 WEIGHTS = {
     'credential_request': 30, 'collect_approval': 30, 'remote_access': 30, 'screen_sharing': 30,
-    'intel_match': 25, 'threat': 20, 'intel_link': 15, 'destination_mismatch': 15, 'bank_avoidance': 15,
+    'qr_payment': 30, 'pin_to_receive': 30, 'intel_match': 25, 'threat': 20, 'intel_link': 15, 'destination_mismatch': 15, 'bank_avoidance': 15,
     'reported_destination_mismatch': 10, 'secrecy': 10, 'urgency': 10, 'repayment': 10, 'unexpected': 10,
     'same_destination': 0, 'reported_same_destination': 0,
 }
@@ -31,6 +35,7 @@ FACTOR_LABELS = {
     'reported_destination_mismatch': 'Different destination reported', 'secrecy': 'Asked for secrecy', 'urgency': 'Urgency',
     'repayment': 'Repayment request', 'unexpected': 'Unexpected payment', 'same_destination': 'Same UPI ID as sender (no reduction)',
     'reported_same_destination': 'Same destination reported (no reduction)',
+    'qr_payment': 'QR code that pays out', 'pin_to_receive': 'UPI PIN asked to receive money',
 }
 
 
@@ -78,6 +83,14 @@ def assess(transaction, context, evidence, extraction, matches, links=()):
                 dangerous.add(kind)
                 suspicious = True
                 add(kind, LABELS[kind], 'local safety check on user-reviewed OCR text' if item['type'] == 'screenshot' else 'local safety check on user statement', str(item['id']), f'safety-{kind}')
+        for intent in item.get('metadata', {}).get('qr_payments', []):
+            dangerous.add('qr_payment')
+            suspicious = True
+            amount = rupees(intent['amount_paise']) if intent.get('amount_paise') else 'an amount you enter'
+            pays_sender = bool(transaction) and normalize('vpa', intent['payee_vpa']) == normalize('vpa', transaction['sender_vpa'])
+            add('qr_payment', f"This QR code starts a payment of {amount} from your account to {intent['payee_vpa']}"
+                f"{' (the original sender)' if pays_sender else ''}. It needs your UPI PIN and cannot receive money.",
+                'local QR decode of the user-submitted image', str(item['id']), 'qr-outgoing-payment')
     identifiers = []
     if context.get('requested_vpa') and VPA.fullmatch(context['requested_vpa'].strip()):
         identifiers.append((context['requested_vpa'], 'user statement', 'context.requested_vpa', None))
@@ -131,6 +144,8 @@ def assess(transaction, context, evidence, extraction, matches, links=()):
         limitations.append('No match found in the available demo data. This is not a trust or safety guarantee.')
     if not transaction or transaction['status'] != 'successful':
         category, decision = 'Unable to assess', 'transaction-not-complete'
+    elif dangerous & OUTGOING:
+        category, decision = 'High concern', 'outgoing-payment-mechanism'
     elif dangerous or len(pressures) >= 2 or (matches and unexpected and repayment):
         category, decision = 'High concern', 'strong-signal-combination'
     elif (unexpected and repayment) or suspicious:
@@ -159,4 +174,124 @@ def assess(transaction, context, evidence, extraction, matches, links=()):
         limitations=list(dict.fromkeys(limitations)), recommendations=[],
         summary=summary, generated_at=datetime.now(timezone.utc), intelligence_matches=matches,
         extraction_status=extraction['status'], provider_mode=extraction['provider_mode'],
-        risk_score=total, score_version=SCORE_VERSION, risk_factors=factors, graph_links=list(links)).model_dump(mode='json')
+        risk_score=total, score_version=SCORE_VERSION, risk_factors=factors, graph_links=list(links),
+        headline=headline(transaction, category, decision, findings),
+        story=story(transaction, findings, pressures, dangerous, category, decision)).model_dump(mode='json')
+
+
+def rupees(paise):
+    return f"₹{paise // 100:,}" if paise % 100 == 0 else f"₹{paise / 100:,.2f}"
+
+
+def _network(findings):
+    return any(f['kind'] in ('intel_match', 'intel_link') for f in findings)
+
+
+def headline(transaction, category, decision, findings):
+    """Presentation-only verdict banner; the category remains authoritative."""
+    kinds = {f['kind'] for f in findings}
+    genuine = bool(transaction) and transaction['status'] == 'successful'
+    if decision == 'outgoing-payment-mechanism':
+        return {'tone': 'danger', 'label': 'Dangerous payment action',
+                'title': "This 'refund' would send money from your account",
+                'message': 'Scanning a UPI QR, approving a collect request, or entering your UPI PIN starts a payment out of your account. '
+                           'None of these is ever needed to receive money. Do not proceed.'}
+    if genuine and _network(findings) and category in ('High concern', 'Needs verification'):
+        same = ', even though the repayment UPI ID matches the sender' if kinds & {'same_destination', 'reported_same_destination'} else ''
+        return {'tone': 'caution', 'label': 'Suspicious network',
+                'title': 'The payment is genuine, but the network behind it is not',
+                'message': f'The sender or repayment details are linked to reported fraud in the simulated intelligence graph{same}. '
+                           'Do not return the funds yourself; let your bank handle the reversal. A link is not proof of guilt.'}
+    if genuine and category == 'High concern':
+        return {'tone': 'danger', 'label': 'High concern',
+                'title': 'The payment is genuine, but the request shows strong warning signs',
+                'message': 'Do not send money back yourself. Ask your bank or Paytm to reverse the original credit through official channels.'}
+    if genuine and category == 'Needs verification':
+        return {'tone': 'caution', 'label': 'Caution',
+                'title': "The payment is genuine, but the repayment request can't be verified",
+                'message': 'Do not make a separate payment until your bank or payment provider confirms the correct way to return the funds.'}
+    if category == 'No strong indicators found':
+        return {'tone': 'safe', 'label': 'No strong warning signs',
+                'title': 'Nothing here suggests a repayment scam',
+                'message': 'This is not a safety guarantee. If someone later asks for the money back, check with Byte Bot again.'}
+    if decision == 'transaction-not-complete':
+        return {'tone': 'info', 'label': 'Payment not complete',
+                'title': 'This money has not arrived',
+                'message': 'The payment is pending or failed. Do not send anything back for a payment that has not completed.'}
+    return {'tone': 'info', 'label': 'Need more detail', 'title': 'Byte Bot needs a little more information',
+            'message': 'Answer the follow-up questions so Byte Bot can decide the safest next step.'}
+
+
+TACTICS = {'urgency': 'urgency', 'threat': 'threats', 'bank_avoidance': 'told to avoid the bank', 'secrecy': 'asked for secrecy'}
+
+
+def story(transaction, findings, pressures, dangerous, category, decision):
+    """The six questions behind a suspicious payment, answered from the findings."""
+    kinds = {f['kind'] for f in findings}
+    steps = []
+
+    def step(key, question, status, answer):
+        steps.append({'id': key, 'question': question, 'status': status, 'answer': answer})
+    if not transaction:
+        step('arrived', 'Did the money actually arrive?', 'fail', 'No matching payment was found in your Paytm history.')
+    elif transaction['status'] == 'successful':
+        amount = f"{rupees(transaction['amount_paise'])} " if transaction.get('amount_paise') else 'The payment '
+        sender = transaction.get('sender_name') or 'the sender'
+        step('arrived', 'Did the money actually arrive?', 'pass',
+             f"Yes. {amount}from {sender} ({transaction.get('sender_vpa', 'unknown UPI ID')}) is in your Paytm history.")
+    else:
+        step('arrived', 'Did the money actually arrive?', 'warn' if transaction['status'] == 'pending' else 'fail',
+             f"Not yet. This payment is {transaction['status']}, so the money may never arrive.")
+    asks = []
+    if 'qr_payment' in kinds:
+        asks.append('scan a QR code')
+    if 'collect_approval' in kinds:
+        asks.append('approve a collect request')
+    if kinds & {'pin_to_receive', 'credential_request'}:
+        asks.append('enter or share your UPI PIN or OTP')
+    if kinds & {'remote_access', 'screen_sharing'}:
+        asks.append('give someone control of your screen')
+    if 'repayment' in kinds and not asks:
+        where = (' to a different UPI ID' if kinds & {'destination_mismatch', 'reported_destination_mismatch'}
+                 else ' to the same UPI ID' if kinds & {'same_destination', 'reported_same_destination'} else '')
+        asks.append(f'send the money back{where}')
+    if asks:
+        step('asked', 'What exactly are you being asked to do?', 'fail' if dangerous else 'warn', 'To ' + ', '.join(asks) + '.')
+    else:
+        step('asked', 'What exactly are you being asked to do?', 'pass', 'Nothing has been asked of you.')
+    if dangerous & OUTGOING:
+        step('sends_out', 'Would that send money from your account?', 'fail',
+             'Yes. It starts a payment out of your account. Receiving money never needs a QR scan, a collect approval, or your PIN.')
+    elif 'repayment' in kinds:
+        step('sends_out', 'Would that send money from your account?', 'warn',
+             'Yes. A repayment is a new, separate payment that may not be reversible.')
+    else:
+        step('sends_out', 'Would that send money from your account?', 'pass', 'No outgoing payment has been requested.')
+    tactics = [TACTICS[k] for k in TACTICS if k in kinds]
+    if kinds & {'remote_access', 'screen_sharing'}:
+        tactics.append('remote access or screen sharing')
+    if tactics:
+        step('pressure', 'Is there evidence of social engineering?', 'fail' if len(pressures) >= 2 or 'threat' in kinds else 'warn',
+             'Yes: ' + ', '.join(tactics) + '.')
+    else:
+        step('pressure', 'Is there evidence of social engineering?', 'pass', 'No pressure tactics were found in what you shared.')
+    intel = [f for f in findings if f['kind'] in ('intel_match', 'intel_link')]
+    if intel:
+        step('intel', 'Is there relevant fraud intelligence?', 'fail', intel[0]['text'])
+    else:
+        step('intel', 'Is there relevant fraud intelligence?', 'pass', 'No match in the available demo intelligence. This is not a safety guarantee.')
+    genuine = bool(transaction) and transaction['status'] == 'successful'
+    if decision == 'outgoing-payment-mechanism':
+        safest = "Don't scan, approve, or enter your PIN. Block the UPI ID and let your bank handle the original credit."
+    elif genuine and intel and category != 'No strong indicators found':
+        safest = "Don't return the money yourself. Let your bank reverse the original credit."
+    elif category in ('High concern', 'Needs verification'):
+        safest = "Don't make a separate payment. Ask your bank or Paytm to reverse the original credit."
+    elif category == 'No strong indicators found':
+        safest = 'No action is needed. Check again if anyone asks for the money back.'
+    elif decision == 'transaction-not-complete':
+        safest = "Wait for the payment to complete, and don't send anything in the meantime."
+    else:
+        safest = 'Answer a few questions so Byte Bot can decide.'
+    step('safest', "What's the safest next action?", 'pass', safest)
+    return steps

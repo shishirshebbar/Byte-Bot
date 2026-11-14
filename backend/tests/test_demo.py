@@ -56,7 +56,7 @@ def test_load_scenarios_current_results_and_reuse(client, scenario):
     response = client.get(API + '/demo/scenarios')
     assert response.status_code == 200 and 'set-cookie' not in response.headers
     assert response.json()['extraction_mode'] == 'fixture'
-    assert [item['id'] for item in response.json()['scenarios']] == list('ABCDEFGHIJKL')
+    assert [item['id'] for item in response.json()['scenarios']] == list('ABCDEFGHIJKLMNO')
     case = load(client, scenario)
     before = client.get(API + '/transactions').json()
     assert case['context'] == scenario_answers(scenario)

@@ -131,8 +131,11 @@ export function FraudGraph({ caseId }: { caseId: string }) {
   }, [caseId]);
   if (!graph || graph.nodes.length === 0) return null;
   const columns: Record<string, number> = { vpa: 0, account: 0, phone: 1, device: 1, incident: 2 };
-  const groups: Record<number, typeof graph.nodes> = { 0: [], 1: [], 2: [] };
-  graph.nodes.forEach(node => groups[columns[node.kind] ?? 1].push(node));
+  const groups: Record<number, typeof graph.nodes> = { 0: [], 1: [], 2: [], 3: [] };
+  // Accounts that received repayments after an incident sit to the right of the incidents.
+  const recipients = new Set(graph.edges.filter(edge => edge.relation === 'repaid_to').map(edge => edge.target));
+  graph.nodes.forEach(node => groups[recipients.has(node.id) ? 3 : columns[node.kind] ?? 1].push(node));
+  const width = groups[3].length ? 445 : 330;
   const height = Math.max(...Object.values(groups).map(group => group.length)) * 62 + 20;
   const position: Record<string, { x: number; y: number }> = {};
   Object.entries(groups).forEach(([column, nodes]) => nodes.forEach((node, index) => {
@@ -140,7 +143,7 @@ export function FraudGraph({ caseId }: { caseId: string }) {
   }));
   return <section className="fraud-graph" aria-label="Fraud intelligence graph">
     <h3>Simulated fraud graph</h3>
-    <svg viewBox={`0 0 330 ${height}`} role="img" aria-label={`${graph.nodes.length} linked entities in the simulated fraud graph`}>
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${graph.nodes.length} linked entities in the simulated fraud graph`}>
       {graph.edges.map(edge => <line key={edge.source + edge.target} x1={position[edge.source].x} y1={position[edge.source].y} x2={position[edge.target].x} y2={position[edge.target].y} className="graph-edge" />)}
       {graph.nodes.map(node => <g key={node.id} className={`graph-node node-${node.kind}`} transform={`translate(${position[node.id].x} ${position[node.id].y})`}>
         <circle r="13" /><text y="27">{node.kind === 'incident' ? node.identifier.replace('SYNTHETIC-INCIDENT-', 'Incident ') : node.identifier}</text>

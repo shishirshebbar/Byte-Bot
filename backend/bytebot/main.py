@@ -16,6 +16,7 @@ from .agent_routes import router as agent_router
 from .console import router as console_router
 from .voice_routes import router as voice_router
 from .metrics import router as metrics_router
+from .claims import router as claims_router
 
 
 def create_app(database_url=DATABASE_URL, ocr_adapter=None, extraction_provider=None, worker_enabled=True, systems=None, speech=None,
@@ -63,6 +64,7 @@ def create_app(database_url=DATABASE_URL, ocr_adapter=None, extraction_provider=
     app.include_router(console_router, prefix="/api/v1")
     app.include_router(voice_router, prefix="/api/v1")
     app.include_router(metrics_router, prefix="/api/v1")
+    app.include_router(claims_router, prefix="/api/v1")
 
     limiter = RateLimiter(rate_limits or DEFAULT_LIMITS)
 

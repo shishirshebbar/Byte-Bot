@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDownLeft, Bot, Check, Clock3, Search, ShieldAlert, Wallet, X } from 'lucide-react';
+import { ArrowDownLeft, Bot, Check, Clock3, Search, SearchCheck, ShieldAlert, Wallet, X } from 'lucide-react';
 import type { Transaction } from './api';
 import { money } from './transaction-ui';
 import './teammate.css';
@@ -43,6 +43,10 @@ export function PhoneHistory({ transactions }: { transactions: Transaction[] }) 
       <span><strong>Unexpected {money(flagged)} received?</strong><small>If someone asks you to send it back, let Byte Bot check it first.</small></span>
       <Bot size={18} aria-hidden="true" />
     </Link>}
+    <Link className="push-card claim-card" to="/check-payment" aria-label="Someone says they paid you? Check whether the money arrived">
+      <span className="push-icon"><SearchCheck size={18} aria-hidden="true" /></span>
+      <span><strong>Someone says they paid you?</strong><small>Check whether the money really arrived before sending anything back.</small></span>
+    </Link>
     <div className="summary-chips">
       <span><Wallet size={16} aria-hidden="true" />{money({ ...transactions[0], amount_paise: received })}</span>
       <span>{transactions.length} payments</span>

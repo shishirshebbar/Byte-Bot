@@ -136,7 +136,7 @@ class GeminiProvider:
 async def extract(provider, evidence, transaction):
     if provider.mode == 'fixture':
         from .fixtures import SCENARIOS
-        allowed = {item['text'] for item in SCENARIOS.values() if item['text']}
+        allowed = {variant for item in SCENARIOS.values() if item['text'] for variant in (item['text'], redact(item['text']))}
         if any(item['confirmed_text'] not in allowed for item in evidence):
             return {'claims': [], 'status': 'unavailable', 'provider_mode': 'fixture',
                     'notices': ['Evidence extraction is unavailable. Only supported local facts and saved answers were used.']}

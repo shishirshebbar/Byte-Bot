@@ -65,6 +65,22 @@ SCENARIOS = {
           'answers': {'contact_channels': ['whatsapp'], 'requested_destination_type': 'same_sender'},
           'kinds': ['repayment', 'urgency', 'bank_avoidance', 'threat', 'vpa', 'amount'], 'category': 'High concern',
           'agent': {'outcome': 'awaiting_consent', 'escalation': []}},
+    # The "three worlds" story: the same opening line from a sender called Rahul.
+    'M': {'text': 'Hi, I sent you INR 5000 by mistake. Please return it immediately to rahul.mehta.demo@upi.',
+          'context': {'expected_payment': 'no', 'knows_sender': 'no', 'repayment_requested': 'yes', 'pressure_tactics': ['urgency'], 'requested_vpa': 'rahul.mehta.demo@upi'},
+          'answers': {'contact_channels': ['whatsapp'], 'requested_destination_type': 'same_sender'},
+          'kinds': ['repayment', 'urgency', 'vpa', 'amount'], 'category': 'Needs verification',
+          'agent': {'outcome': 'awaiting_consent', 'escalation': []}},
+    'N': {'text': 'Hi, I sent you INR 5000 by mistake. Please scan this QR code to return it and enter your UPI PIN to confirm.',
+          'context': {'expected_payment': 'no', 'knows_sender': 'no', 'repayment_requested': 'yes', 'pressure_tactics': []},
+          'answers': {'contact_channels': ['whatsapp'], 'requested_destination_type': 'payment_request'},
+          'kinds': ['repayment', 'amount'], 'category': 'High concern', 'qr': 'refund-qr.png',
+          'agent': {'outcome': 'awaiting_consent', 'escalation': []}},
+    'O': {'text': 'Hi, I sent you INR 5000 by mistake. Please return it to rahul.demo@upi.',
+          'context': {'expected_payment': 'no', 'knows_sender': 'no', 'repayment_requested': 'yes', 'pressure_tactics': [], 'requested_vpa': 'rahul.demo@upi'},
+          'answers': {'contact_channels': ['whatsapp'], 'requested_destination_type': 'same_sender'},
+          'kinds': ['repayment', 'vpa', 'amount'], 'category': 'Needs verification',
+          'agent': {'outcome': 'awaiting_consent', 'escalation': []}},
 }
 
 SCENARIO_LABELS = {
@@ -80,6 +96,9 @@ SCENARIO_LABELS = {
     'J': ('Missing details', 'A repayment request with no saved answers. Byte Bot asks follow-up questions before acting.'),
     'L': ('Hinglish repayment threat', 'A Hinglish WhatsApp message: return the money now, do not tell the bank, or the police will be called.'),
     'K': ('High-value repayment', 'A ₹75,000 credit with an urgent request to repay another UPI ID. A human approves any hold.'),
+    'M': ('Rahul: real credit, suspicious request', 'Rahul really sent ₹5,000 and urgently wants it back. The payment is genuine; the request is unverified.'),
+    'N': ('Rahul: QR "refund"', 'Rahul really sent ₹5,000 and asks you to scan a QR and enter your PIN. The QR would pay him, not you.'),
+    'O': ('Rahul: same UPI ID, suspicious network', 'A genuine credit and a polite same-ID request, but the sender is linked to reported incidents.'),
 }
 
 
@@ -99,6 +118,7 @@ class FixtureProvider:
     async def extract(self, texts):
         from .extraction import PATTERNS
         from .safety import PATTERNS as SAFETY
+        from .redaction import redact
         claims = []
         for item in texts:
             text = item['text']
@@ -106,7 +126,10 @@ class FixtureProvider:
             selected = None
             for fixture in SCENARIOS.values():
                 original = fixture['text']
-                if original and re.sub(r'[\w.+-]+@\w+', '[VPA]', original) == re.sub(r'\[VPA_\d+\]', '[VPA]', text):
+                # Evidence is redacted on save and again before extraction; accept either pass.
+                variants = {original, redact(original), redact(redact(original))} if original else set()
+                masked = re.sub(r'\[VPA_\d+\]', '[VPA]', text)
+                if any(re.sub(r'[\w.+-]+@\w+', '[VPA]', v) == masked for v in variants):
                     selected = fixture
                     break
             if selected is None:

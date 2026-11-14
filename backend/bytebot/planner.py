@@ -72,6 +72,10 @@ def plan(transaction, context, assessment):
             add('block_vpa', 'Prevent an accidental transfer to the UPI ID that requested repayment.')
     if 'collect_approval' in kinds:
         add('decline_collect', 'A collect request is never needed to receive money.')
+    if kinds & {'qr_payment', 'pin_to_receive'}:
+        add('block_vpa', 'Block the UPI ID that the QR code or PIN prompt would pay.')
+    if received and kinds & {'intel_match', 'intel_link'} and category in ('High concern', 'Needs verification'):
+        add('raise_bank_dispute', 'The sender is linked to reported fraud; let the bank handle the reversal instead of repaying.')
     if category == 'High concern':
         add('raise_bank_dispute', 'Strong warning signs need the bank to verify how the original credit should be handled.')
     if context['already_sent_money'] == 'yes':
