@@ -7,16 +7,30 @@ Complete [setup](setup.md) and open **http://127.0.0.1:5174** (or the production
 
 Keep three tabs ready: the presentation (`/`), the human console (`/console`), and outcomes (`/metrics`).
 
+## The stage
+
+The presentation is one 1440×900 frame with no page scroll (press **F** for full screen when sharing a browser window). The light phone on the left is the customer; the dark **Story Board** on the right is Byte Bot thinking.
+
+- **Before a case:** the stage asks the hook question over the six questions.
+- **After analysis:** the agents light up, the six questions fill in one by one with ✓/⚠/✕, then the **verdict** arrives with the risk gauge, followed by a **proof panel** for the case:
+  - Case 1: a scan of the customer's own history for the claimed credit.
+  - Case 2: a "message X-ray" that highlights the pressure phrases.
+  - Case 3: which way the money would move ("₹5,000 leaves your account → rahul.mehta.demo@upi").
+  - Case 4: the fraud network around the sender.
+- **Below the board:** the supervisor decisions and the actions on the simulated systems, with their consent states.
+- **Replay** (or **Space**) re-runs the reveal. With reduced motion, everything appears at once. The stage only re-displays stored results; Python rules still decide every category.
+- **Presenter dock** (bottom): the four worlds (keys **1–4**), the scenario selector with **Load / reopen scenario**, and **Reset demo** (**R**). The top bar shows the active world and whether extraction is live Sarvam or fixture.
+
 ## Three worlds: the opening hook
 
-Ask the judges: "You've received ₹5,000. Rahul says it was a mistake. What would you do?" Then, in the presenter controls, **Reset demo** and use **Three worlds**:
+Ask the judges the question on the empty stage: "You've received ₹5,000. Rahul says it was a mistake. What would you do?" Then **Reset demo** (**R**) and use the **Three worlds** buttons (keys **1–4**):
 
 1. **No credit arrived.** Opens "Did the money really arrive?" with Rahul's message pre-filled. **Check my payments** shows **Scam warning: the claimed payment can't be verified.**
 2. **Real credit, suspicious request** (Scenario M). Ask Byte Bot, then analyze: **Caution: the payment is genuine, but the repayment request can't be verified.**
 3. **Real credit, QR "refund"** (Scenario N). The synthetic refund QR is decoded locally: it would pay ₹5,000 *from* the customer to Rahul. **Dangerous payment action.**
 4. **Same UPI ID, suspicious network** (Scenario O, optional). A polite same-ID request, but the fraud graph links the sender to three reported incidents and two repayment recipients. **Suspicious network: let your bank handle the reversal.**
 
-Rerun world 1 after world 2 to show that the same message is now verified ("The money really arrived"). Each result shows **How Byte Bot checked the story**: the six questions with ✓/⚠/✕ answers.
+Rerun world 1 after world 2 to show that the same message is now verified ("The money really arrived"). Each world ends with the six questions, the verdict, and the case's proof panel on the stage; press **Space** to replay the reveal while you explain it.
 
 ## Four-minute AI-teammate pitch
 

@@ -60,8 +60,11 @@ def main():
         load_scenario(page, 'L')
         timings['L_analysis'] = analyze(page, phone)
         expect(phone.get_by_role('heading', name='High concern')).to_be_visible()
-        gauge = phone.get_by_role('img', name=re.compile(r'Risk score \d+ out of 100'))
+        # The presenter stage carries the verdict, the six-question story, and the display-only risk gauge.
+        gauge = panel.get_by_role('img', name=re.compile(r'Risk score \d+ out of 100'))
         expect(gauge).to_be_visible()
+        expect(panel.get_by_label('Stage verdict')).to_be_visible()
+        expect(panel.get_by_role('list', name='Story check').get_by_role('listitem')).to_have_count(6)
         expect(panel.get_by_text('Supervisor decisions')).to_be_visible()
         expect(panel.get_by_text('Policy check').first).to_be_visible()
         hold(4)

@@ -2,16 +2,16 @@ import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CircleCheck, CircleX, Info, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { json } from './api';
-import type { Headline, StoryStep } from './investigation-types';
-import { usePhoneLock } from './presentation-state';
+import type { ClaimResult, Headline, StoryStep } from './investigation-types';
+import { useClaimSnapshot, usePhoneLock } from './presentation-state';
 import './teammate.css';
 
-const TONE_ICON = { danger: ShieldAlert, caution: TriangleAlert, safe: ShieldCheck, info: Info } as const;
+export const TONE_ICON = { danger: ShieldAlert, caution: TriangleAlert, safe: ShieldCheck, info: Info } as const;
 
-export function VerdictBanner({ headline }: { headline?: Headline | null }) {
+export function VerdictBanner({ headline, compact = false }: { headline?: Headline | null; compact?: boolean }) {
   if (!headline) return null;
   const Icon = TONE_ICON[headline.tone] ?? Info;
-  return <section className={`verdict verdict-${headline.tone}`} aria-label={`Verdict: ${headline.label}`}>
+  return <section className={`verdict verdict-${headline.tone}${compact ? ' verdict-compact' : ''}`} aria-label={`Verdict: ${headline.label}`}>
     <span className="verdict-icon"><Icon size={22} aria-hidden="true" /></span>
     <div><span className="verdict-label">{headline.label}</span><strong>{headline.title}</strong><p>{headline.message}</p></div>
   </section>;
@@ -31,12 +31,6 @@ export function StoryChain({ steps }: { steps?: StoryStep[] }) {
   </section>;
 }
 
-type ClaimResult = {
-  status: 'not_found' | 'not_completed' | 'verified' | 'ambiguous' | 'need_amount';
-  claimed_amount_paise: number | null;
-  matches: { transaction_id: string; amount_paise: number; sender_name: string; sender_vpa: string; status: string; occurred_at: string }[];
-  headline: Headline; story: StoryStep[];
-};
 const PRESETS: Record<string, { text: string; sender: string }> = {
   rahul: { text: 'Hi, I sent you ₹5,000 by mistake. Please return it immediately.', sender: 'Rahul' },
 };
@@ -52,15 +46,17 @@ export function ClaimCheckPage() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<ClaimResult>();
   usePhoneLock(busy);
+  useClaimSnapshot(result);
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true); setError('');
     try {
       const rupeesValue = Number(amount.replace(/[,₹\s]/g, ''));
-      setResult(await json<ClaimResult>('/claim-check', 'POST', {
+      const next = await json<ClaimResult>('/claim-check', 'POST', {
         text: text.trim() || null, sender: sender.trim() || null,
         amount_paise: amount.trim() && rupeesValue > 0 ? Math.round(rupeesValue * 100) : null,
-      }));
+      });
+      setResult({ ...next, sender: sender.trim() || null });
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }

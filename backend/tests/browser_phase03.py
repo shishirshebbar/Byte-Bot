@@ -54,7 +54,7 @@ with sync_playwright() as p:
         assert page.get_by_role('heading', name='Findings and sources', exact=True).is_visible()
         assert page.locator('.finding-reference').count() >= 2
         assert page.get_by_text('This assessment identifies signals', exact=False).is_visible()
-        if scenario in ('F', 'K'):  # Their repayment IDs link to reported incidents in the simulated graph.
+        if scenario in ('F', 'K', 'O'):  # Their repayment or sender IDs link to reported incidents in the simulated graph.
             assert page.get_by_text('A link is not proof of guilt.', exact=False).first.is_visible()
         else:
             assert page.get_by_text('No match found in the available demo data.', exact=False).is_visible()

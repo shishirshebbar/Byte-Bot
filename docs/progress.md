@@ -482,3 +482,18 @@ Branch `teammate-phase-0-1`. Plan: [teammate plan](teammate-plan.md).
 - **Not run.** The seven earlier browser suites (they need a fixture-mode API).
 - **Note.** The RBI discussion-paper point from the pitch is not cited in the docs yet; confirm the exact source and wording first.
 - **Environment.** PostgreSQL still runs on **55434** because Windows refused to bind 55433; `.env` points there.
+
+## 2026-11-14 — Presentation UI redesign ("Story Board")
+
+- **Complete.** Redesigned the presentation, console and metrics for a 1440×900 screen share (plan: senior UX/UI review). No backend logic changed.
+  - **Stage:** one no-page-scroll frame at desktop widths: a dark stage, the light phone scaled to the viewport height, a top bar (tagline, active world, live/fixture mode, links), and a bottom presenter dock (four worlds, scenario selector, Load, Reset, keyboard shortcuts 1–4, Space, R, F).
+  - **Story Board** (`stage/`): an empty-state hook, then a CSS-only reveal keyed to each run (agents, the six questions, the verdict with the gauge, the proof panel, supervisor decisions, actions) with Replay; reduced motion shows the final state at once. Proof panels: ledger scan (Case 1, via the new `useClaimSnapshot` bridge), message X-ray (Case 2), money direction parsed from the QR finding (Case 3), and a stage-size fraud graph (Case 4).
+  - **Phone results** (presentation mode only): compact verdict, the assessment, the safety warning, then the assistant with consent cards, the report and the case status; the long lists collapse into one Details disclosure. The story and risk overview now live on the stage. The investigation screen shows the review card with **Analyze & prepare report** first.
+  - **Design system:** `tokens.css` (brand, stage surfaces, tone tokens for light and stage, type, space, radii, elevation, motion, keyframes, global reduced motion). Contrast fixes: the "Unexpected credit" flag and green amounts now meet AA; teal accents unified to the phone blue.
+  - **Console:** fits the viewport with internal scrolling, adds the verdict banner, a visual audit chain, and action toasts. **Metrics:** a hero KPI band, an A–O scenario matrix with a table view, and the most recent evaluation run by default.
+- **Tests updated.** `browser_teammate.py` now finds the risk gauge, the stage verdict and the six-step story on the stage. `browser_phase03.py` treats Scenario O as graph-linked (it loops over every fixture scenario and O was added with the four-case work).
+- **Checks.**
+  - `npm --prefix frontend run build` passed.
+  - API restarted in **fixture** mode on 8000; all seven browser suites passed: `browser_smoke`, `browser_phase02` through `browser_phase05` and `browser_presentation` on 5174, and `browser_teammate` on the 4174 preview.
+  - A scratch Playwright stage tour of the empty state and worlds 1–4 passed at 1440×900 (dev and preview) and 1280×720, with no page scroll at either size and no page errors. Horizontal overflow checked at 1440, 390 and 320.
+  - Backend unchanged, so pytest was not re-run.
