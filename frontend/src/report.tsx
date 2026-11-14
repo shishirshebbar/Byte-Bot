@@ -108,6 +108,6 @@ export function ReportPage() {
       <section className="panel"><div className="panel-heading"><h2>Unknowns and limitations</h2></div><div className="section-body"><ul>{[...data.unknowns, ...a.limitations, ...data.notices].map((text, i) => <li key={i}>{text}</li>)}</ul></div></section>
       <section className="panel"><div className="panel-heading"><h2>Recommended next steps</h2></div><div className="section-body"><ol>{a.recommendations.map(text => <li key={text}>{text}</li>)}</ol></div></section>
     </>}
-    <p className="footnote">Byte Bot cannot confirm fraud, move money, contact your bank, or submit this report. Recovery cannot be promised. Changed case inputs invalidate the server copy; previously downloaded files remain with you.</p>
+    <p className="footnote">Byte Bot cannot confirm fraud or move real money. Its actions run on simulated systems; it does not contact your real bank or submit this report. Recovery cannot be promised. Changed case inputs invalidate the server copy; previously downloaded files remain with you.</p>
   </>;
 }

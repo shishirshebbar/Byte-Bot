@@ -29,6 +29,8 @@ def owned_case(conn, owner, case_id, revision=None):
 
 def bump(conn, case_id):
     # Deletion and revision fencing are atomic with every actual input change.
+    from .agent_store import revoke_pending
+    revoke_pending(conn, case_id)
     conn.execute('DELETE FROM incident_reports WHERE investigation_id=%s', (case_id,))
     conn.execute("UPDATE analysis_runs SET state='failed',error_code='input_changed',outputs='{}',"
                  "lease_token=NULL,lease_until=NULL,updated_at=now() WHERE investigation_id=%s", (case_id,))
@@ -40,6 +42,7 @@ def bump(conn, case_id):
 
 def snapshot(conn, case):
     from .analysis_store import status as analysis_status
+    from .agent_store import escalation
     transaction = conn.execute('SELECT * FROM transactions WHERE owner_id=%s AND id=%s',
                                (case['owner_id'], case['transaction_id'])).fetchone()
     context = conn.execute('SELECT answers FROM investigation_context WHERE investigation_id=%s',
@@ -47,7 +50,7 @@ def snapshot(conn, case):
     items = conn.execute('SELECT * FROM evidence WHERE investigation_id=%s ORDER BY created_at,id',
                          (case['id'],)).fetchall()
     return {**case, 'transaction': transaction, 'context': Context.model_validate(context),
-            'evidence': items, 'analysis': analysis_status(conn, case)}
+            'evidence': items, 'analysis': analysis_status(conn, case), 'escalation': escalation(conn, case['id'])}
 
 
 def create_case(conn, owner, transaction_id):
@@ -91,7 +94,7 @@ def add_evidence(conn, case, kind, text, metadata=None, notice=None):
     count = conn.execute('SELECT count(*) AS n FROM evidence WHERE investigation_id=%s', (case['id'],)).fetchone()['n']
     if count >= 20:
         raise EvidenceError(422, 'evidence_limit', 'A case can contain up to 20 evidence items. Remove an item first.')
-    screenshot = kind == 'screenshot'
+    screenshot = kind in ('screenshot', 'voice_note')  # Machine drafts need the customer's review.
     row = conn.execute('INSERT INTO evidence (id,investigation_id,type,review_state,ocr_text,confirmed_text,metadata,notice) '
                        'VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *',
                        (uuid4(), case['id'], kind, ('ocr_failed' if notice else 'needs_review') if screenshot else 'confirmed',

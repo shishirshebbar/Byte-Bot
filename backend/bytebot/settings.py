@@ -11,3 +11,5 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', '')
 EXTRACTION_MODE = os.environ.get('BYTEBOT_EXTRACTION_MODE', 'gemini')
+SARVAM_API_KEY = os.environ.get('SARVAM_API_KEY', '')
+SARVAM_CHAT_MODEL = os.environ.get('SARVAM_CHAT_MODEL', 'sarvam-105b-conversations')

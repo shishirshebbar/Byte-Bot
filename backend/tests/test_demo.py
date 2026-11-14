@@ -13,12 +13,14 @@ from bytebot.analysis_store import claim, heartbeat, save_stage, publish, fail, 
 from bytebot.analysis_worker import AnalysisWorker
 from bytebot.extraction import extract
 from bytebot.demo import reset_session
+from bytebot.seeds import TEMPLATES, ON_DEMAND_TEMPLATES
 from test_analysis import run_case
 from synthetic_images import screenshot
 
 API = '/api/v1'
 TABLES = ('investigations', 'investigation_context', 'evidence', 'analysis_runs',
-          'extracted_signals', 'risk_assessments', 'incident_reports', 'audit_events')
+          'extracted_signals', 'risk_assessments', 'incident_reports', 'audit_events',
+          'agent_trace', 'follow_up_questions', 'agent_actions', 'escalations')
 
 
 @pytest.fixture
@@ -54,18 +56,19 @@ def test_load_scenarios_current_results_and_reuse(client, scenario):
     response = client.get(API + '/demo/scenarios')
     assert response.status_code == 200 and 'set-cookie' not in response.headers
     assert response.json()['extraction_mode'] == 'fixture'
-    assert [item['id'] for item in response.json()['scenarios']] == list('ABCDE')
-    before = client.get(API + '/transactions').json()
+    assert [item['id'] for item in response.json()['scenarios']] == list('ABCDEFGHIJKL')
     case = load(client, scenario)
+    before = client.get(API + '/transactions').json()
     assert case['context'] == scenario_answers(scenario)
     assert case['transaction']['reference'] == 'DEMOSCENARIO' + scenario
-    assert case['transaction']['amount_paise'] == 500000
+    template = {row[0]: row for row in TEMPLATES + ON_DEMAND_TEMPLATES}['scenario-' + scenario.lower()]
+    assert case['transaction']['amount_paise'] == template[2]
     assert case['analysis'] is None
-    assert len(case['evidence']) == (0 if scenario == 'D' else 1)
+    assert len(case['evidence']) == (1 if SCENARIOS[scenario]['text'] else 0)
     result = run_case(client, case)['result']
     assert result['category'] == SCENARIOS[scenario]['category']
     report = client.post(path(case) + '/report', json={'expected_revision': case['input_revision']}).json()
-    changed = client.patch(path(case) + '/context', json={'expected_revision': case['input_revision'], 'already_sent_money': 'yes'}).json()
+    changed = client.patch(path(case) + '/context', json={'expected_revision': case['input_revision'], 'already_sent_money': 'no' if case['context']['already_sent_money'] == 'yes' else 'yes'}).json()
     reopened = load(client, scenario, 'manual')
     assert reopened == changed
     assert client.get(path(case) + '/report').status_code == 409
@@ -124,7 +127,7 @@ def test_reset_repeatability_full_deletion_cookie_and_other_session(client, prep
                     if table == 'investigations':
                         ids = conn.execute('SELECT id FROM investigations').fetchall()
                         assert [str(row['id']) for row in ids] == [theirs['id']]
-                    elif table not in ('extracted_signals', 'risk_assessments'):
+                    elif table not in ('extracted_signals', 'risk_assessments', 'agent_trace'):
                         assert not conn.execute(f'SELECT 1 FROM {table} WHERE investigation_id=%s', (case['id'],)).fetchone()
         other.post(API + '/demo/reset')
         assert_empty(client)

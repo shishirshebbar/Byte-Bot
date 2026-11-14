@@ -1,5 +1,5 @@
 import psycopg
-from .intelligence import seed_intelligence
+from .intelligence import seed_intelligence, seed_graph
 
 FIELDS = "direction, amount_paise, currency, sender_name, sender_vpa, receiver_vpa, occurred_at, status, reference, source"
 TEMPLATES = [
@@ -15,12 +15,23 @@ TEMPLATES += [
      'successful', f'DEMOSCENARIO{key}', 'mock')
     for index, key in enumerate('ABCDE')
 ]
+# Agent scenarios are copied only when a presenter loads them, so the default
+# history keeps its eight transactions.
+ON_DEMAND_TEMPLATES = [
+    (f'scenario-{key.lower()}', 'incoming', amount, 'INR', f'Scenario {key} sender',
+     'aarav.demo@upi', 'recipient.demo@upi', f'2026-11-09T09:0{index}:00+05:30',
+     'successful', f'DEMOSCENARIO{key}', 'mock')
+    for index, (key, amount) in enumerate([('F', 500000), ('G', 500000), ('H', 500000),
+                                           ('I', 500000), ('J', 500000), ('K', 7500000), ('L', 500000)])
+]
+DEFAULT_KEYS = [row[0] for row in TEMPLATES]
 
 
 def seed(url, *, include_intelligence=True):
     with psycopg.connect(url) as conn:
-        for row in TEMPLATES:
+        for row in TEMPLATES + ON_DEMAND_TEMPLATES:
             conn.execute(f"INSERT INTO transaction_templates (template_key, {FIELDS}) VALUES ({', '.join(['%s'] * 11)}) ON CONFLICT (template_key) DO NOTHING", row)
 
         if include_intelligence:
             seed_intelligence(conn)
+            seed_graph(conn)

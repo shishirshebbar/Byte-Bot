@@ -1,3 +1,4 @@
+import { VoiceNote } from './voice-ui';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MessageCircleMore, Paperclip } from 'lucide-react';
@@ -10,7 +11,7 @@ import { useScreenPath } from './screen-path';
 import type { Answer, Context, Evidence, Investigation, Analysis } from './investigation-types';
 type EvidenceResult = { evidence: Evidence; input_revision: number };
 const textOf = (item: Evidence) => item.confirmed_text ?? item.ocr_text ?? '';
-const titles = { message: 'Pasted message', call_summary: 'Typed call summary', screenshot: 'Screenshot' };
+const titles = { message: 'Pasted message', call_summary: 'Typed call summary', screenshot: 'Screenshot', voice_note: 'Voice note (Sarvam AI)' };
 
 export function AskByteBot({ transactionId }: { transactionId: string }) {
   const navigate = useNavigate();
@@ -186,10 +187,11 @@ function Workspace({ initial, reload }: { initial: Investigation; reload: () => 
       {preview && <div className="preview"><img src={preview.url} alt="Browser-local screenshot preview" /><button type="button" className="secondary" onClick={() => { setFile(null); setPreview(undefined); if (fileInput.current) fileInput.current.value = ''; }}>Close preview</button></div>}
       <button disabled={!file || busy || conflict} onClick={() => void perform(async () => { const form = new FormData(); form.append('file', file!); form.append('expected_revision', String(data.input_revision)); const result = await request<EvidenceResult>(`${base}/evidence`, { method: 'POST', body: form }); apply(result); setFile(null); setPreview(p => p && { ...p, id: result.evidence.id }); if (fileInput.current) fileInput.current.value = ''; }, 'Screenshot processed. Review and confirm its text.')}>Upload and read screenshot</button>
       <p className="field-help">To replace a screenshot, upload a new one and remove the previous item.</p></div>
+      <div className="upload"><VoiceNote base={base} revision={data.input_revision} disabled={busy || conflict} onDone={result => { apply(result); setMessage('Voice note transcribed. Review and confirm its text.'); }} /></div>
     </div></section>
     <section className="panel evidence-section" aria-label="Saved evidence"><div className="panel-heading"><h2>3. Review saved evidence</h2><span>{data.evidence.length} / 20 items</span></div><div className="section-body">
       {data.evidence.length === 0 && <p>No evidence added. Your saved answers remain available.</p>}
-      {data.evidence.map(item => <article className="evidence-item" id={`evidence-${item.id}`} tabIndex={-1} key={item.id}><h3>{titles[item.type]}</h3><p className="field-help">Source: {item.type === 'screenshot' ? 'local OCR, reviewed by you when confirmed' : 'user statement'} · {item.review_state === 'confirmed' ? 'Confirmed' : 'Awaiting your review'}</p>
+      {data.evidence.map(item => <article className="evidence-item" id={`evidence-${item.id}`} tabIndex={-1} key={item.id}><h3>{titles[item.type]}</h3><p className="field-help">Source: {item.type === 'screenshot' ? 'local OCR, reviewed by you when confirmed' : item.type === 'voice_note' ? 'Sarvam speech-to-text and translation, reviewed by you when confirmed' : 'user statement'} · {item.review_state === 'confirmed' ? 'Confirmed' : 'Awaiting your review'}</p>
         {item.notice && <p role="status" className="guidance">{item.notice === 'unreadable' ? 'No readable text was found.' : 'OCR is unavailable.'} Type or paste the message below, then confirm it. Your investigation is saved.</p>}
         {item.review_state !== 'confirmed' && <p className="field-help">This screenshot is excluded from future analysis until you confirm its text.</p>}
         <label className="field">{item.type === 'screenshot' ? 'Review screenshot text' : 'Review evidence text'}<textarea aria-label={item.type === 'screenshot' ? 'Review screenshot text' : 'Review evidence text'} maxLength={10000} rows={4} value={drafts[item.id] ?? textOf(item)} disabled={busy || conflict} onChange={e => setDrafts(v => ({ ...v, [item.id]: e.target.value }))} /></label>

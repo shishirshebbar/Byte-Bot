@@ -39,6 +39,14 @@ def retrieve(conn, case):
     return ReportSnapshot.model_validate(row['snapshot'])
 
 
+def report_actions(conn, run_id):
+    from .planner import ACTIONS
+    from .systems import LABELS
+    rows = conn.execute('SELECT action_type,system,state,actor,system_reference FROM agent_actions WHERE run_id=%s ORDER BY seq',
+                        (run_id,)).fetchall()
+    return [{**row, 'label': ACTIONS[row['action_type']]['label'], 'system_label': LABELS[row['system']]} for row in rows]
+
+
 def generate(conn, case, *, actor='user'):
     # Caller holds the case lock through snapshot creation and commit. Input
     # writers use this same lock, so a stale snapshot cannot be republished.
@@ -64,12 +72,13 @@ def generate(conn, case, *, actor='user'):
         'transaction_explanation': EXPLANATIONS[transaction['status']],
         'user_statements': answers, 'evidence': [
             {'id': e['id'], 'type': e['type'], 'text': e['confirmed_text'],
-             'source': 'User-reviewed local OCR' if e['type'] == 'screenshot' else 'User statement'} for e in evidence],
+             'source': {'screenshot': 'User-reviewed local OCR', 'voice_note': 'User-reviewed Sarvam voice transcript'}.get(e['type'], 'User statement')} for e in evidence],
         'extracted_signals': [{**r['data'], 'value':
             f"₹{r['data']['value'] // 100:,}.{r['data']['value'] % 100:02d} INR"
             if r['data']['kind'] == 'amount' and type(r['data']['value']) is int else r['data']['value']
         } for r in signals], 'assessment': run['result'],
         'unknowns': unknowns, 'notices': run['notices'],
+        'actions': report_actions(conn, run['run_id']),
     })
     conn.execute('INSERT INTO incident_reports(id,investigation_id,input_revision,run_id,snapshot,generated_at) VALUES (%s,%s,%s,%s,%s,%s)',
                  (snapshot.id, case['id'], case['input_revision'], run['run_id'],
@@ -128,9 +137,15 @@ def format_text(report):
         # The validated assessment owns the explicit presentation fields.
         lines.append(' · '.join(f'{key}: {match.get(key, "")}' for key in
                      ('identifier', 'source_label', 'reported_at', 'match_type', 'incident_reference', 'limitations')))
+    lines.extend(['', 'BYTE BOT ACTIONS AT REPORT TIME (SIMULATED SYSTEMS)'])
+    if not r.get('actions'):
+        lines.append('No account actions were planned.')
+    for action in r.get('actions', []):
+        lines.append(f"{action['label']} · {action['state'].replace('_', ' ')} · {action['system_label']}"
+                     + (f" · reference {action['system_reference']}" if action['system_reference'] else ''))
     lines.extend(['', 'UNKNOWNS AND LIMITATIONS', *r['unknowns'], *a['limitations'], *r['notices'],
                   '', 'RECOMMENDED NEXT STEPS', *[f'{i}. {text}' for i, text in enumerate(a['recommendations'], 1)],
-                  '', 'Byte Bot cannot confirm fraud, move money, contact your bank, or submit this report.',
+                  '', 'Byte Bot cannot confirm fraud or move real money. Listed actions ran on simulated systems; it does not contact your real bank or submit this report.',
                   'Case status records actions reported by you outside the app. Recovery cannot be promised.',
                   'Changed case inputs invalidate the server copy. Previously downloaded files remain with you.'])
     return '\n'.join(lines) + '\n'

@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from bytebot.main import create_app
 from bytebot.migrate import migrate
-from bytebot.seeds import seed, TEMPLATES
+from bytebot.seeds import seed, TEMPLATES, ON_DEMAND_TEMPLATES
 
 
 def snapshot(url, table):
@@ -24,7 +24,7 @@ def test_repeatability_and_concurrent_migration(prepared):
     seed(prepared)
     assert snapshot(prepared, 'transaction_templates') == before
     assert snapshot(prepared, 'schema_migrations') == versions
-    assert len(before) == len(TEMPLATES) == 8
+    assert len(TEMPLATES) == 8 and len(before) == len(TEMPLATES) + len(ON_DEMAND_TEMPLATES)
 
 
 def test_migration_failure_and_checksum(prepared, tmp_path):

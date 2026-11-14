@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Activity, ArrowDownLeft, BatteryFull, Check, ChevronDown, CircleHelp, FileText,
+  Activity, ArrowDownLeft, BatteryFull, Bot, ScanLine, Check, ChevronDown, CircleHelp, FileText,
   Fingerprint, ListChecks, MessageSquareText, ShieldCheck, Signal, Wallet, Wifi,
 } from 'lucide-react';
 import { DemoControls } from './demo';
@@ -48,8 +48,27 @@ function Workflow({ data }: { data?: Investigation }) {
         </details></li>;
       })}
     </ol>
+    {run?.agent && run.agent.trace.length > 0 && <div className="agent-trace">
+      <h3>Supervisor decisions</h3>
+      <ol>{run.agent.trace.map(step => <li key={step.seq} className={`trace-${step.node}`}>
+        <span className="trace-node">{NODE_LABELS[step.node] || step.node}</span><span>{step.reason}</span>
+      </li>)}</ol>
+      {run.agent.outcome && <p className="trace-outcome">Outcome: {OUTCOMES[run.agent.outcome]}{data?.escalation && data.escalation.state !== 'resolved' ? ` · ${data.escalation.priority} priority handoff` : ''}</p>}
+    </div>}
   </>;
 }
+
+const NODE_LABELS: Record<string, string> = {
+  transaction_context: 'Transaction Context agent', message_analysis: 'Message Analysis agent',
+  risk_investigation: 'Risk Investigation agent', gather_context: 'Ask for missing details',
+  plan_actions: 'Plan protective steps', policy_gate: 'Policy check', escalate: 'Hand off to a person',
+  incident_resolution: 'Incident Resolution agent',
+};
+const OUTCOMES: Record<string, string> = {
+  needs_customer_info: 'waiting for customer answers', escalated: 'escalated to a person',
+  awaiting_consent: 'waiting for customer consent', actions_ready: 'approved steps running',
+  actions_completed: 'steps carried out', resolved: 'resolved without action',
+};
 
 function FindingList({ findings, data }: { findings: Finding[]; data: Investigation }) {
   return <ul className="presenter-finding-list">
@@ -156,6 +175,8 @@ export function Presentation({ children, ready, onReset, sessionRetry }: {
           </main>
           <nav className="phone-nav" aria-label="Phone navigation">
             <NavLink to="/" end><Wallet size={18} aria-hidden="true" />Transactions</NavLink>
+            <span className="nav-static" aria-hidden="true"><ScanLine size={18} />Scan</span>
+            <NavLink to="/incidents" aria-label="Byte Bot cases"><Bot size={18} aria-hidden="true" />Byte Bot</NavLink>
             <a href="#presenter-controls"><CircleHelp size={18} aria-hidden="true" />Demo controls</a>
           </nav>
           <div className="phone-home" aria-hidden="true" />
@@ -190,6 +211,6 @@ export function Presentation({ children, ready, onReset, sessionRetry }: {
         </div>
       </aside>
     </div>
-    <div className="stage-footer"><ArrowDownLeft size={14} aria-hidden="true" /> Seeded UPI transactions and simulated intelligence <Link to="/workspace">Open standard workspace</Link></div>
+    <div className="stage-footer"><ArrowDownLeft size={14} aria-hidden="true" /> Seeded UPI transactions and simulated intelligence <a href="/metrics" target="_blank" rel="noopener">Outcome metrics</a> <a href="/console" target="_blank" rel="noopener">Open human console</a> <Link to="/workspace">Open standard workspace</Link></div>
   </div>;
 }

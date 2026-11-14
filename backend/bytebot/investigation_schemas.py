@@ -89,7 +89,7 @@ class ConfirmEvidence(StrictModel):
 
 class Evidence(BaseModel):
     id: UUID
-    type: Literal['message', 'call_summary', 'screenshot']
+    type: Literal['message', 'call_summary', 'screenshot', 'voice_note']
     review_state: Literal['needs_review', 'ocr_failed', 'confirmed']
     ocr_text: str | None
     confirmed_text: str | None
@@ -97,6 +97,23 @@ class Evidence(BaseModel):
     notice: Literal['ocr_unavailable', 'unreadable'] | None
     created_at: datetime
     updated_at: datetime
+
+
+class EscalationReason(BaseModel):
+    code: str
+    label: str
+
+
+class Escalation(BaseModel):
+    id: UUID
+    source: Literal['agent', 'customer']
+    priority: Literal['urgent', 'high', 'normal']
+    state: Literal['open', 'assigned', 'resolved']
+    reasons: list[EscalationReason]
+    sla_due_at: datetime
+    created_at: datetime
+    updated_at: datetime
+    assignee: str | None = None
 
 
 class Investigation(BaseModel):
@@ -112,6 +129,25 @@ class Investigation(BaseModel):
     context: Context
     evidence: list[Evidence]
     analysis: AnalysisStatus | None = None
+    escalation: Escalation | None = None
+
+
+class FollowUpAnswers(StrictModel):
+    answers: Context
+    expected_revision: int = Field(ge=0, strict=True)
+
+
+class ConsentRequest(StrictModel):
+    decision: Literal['approve', 'decline']
+    expected_revision: int = Field(ge=0, strict=True)
+
+
+class EscalationRequest(StrictModel):
+    pass
+
+
+class SpeakRequest(StrictModel):
+    language: Literal['en-IN', 'hi-IN', 'bn-IN', 'ta-IN', 'te-IN', 'kn-IN', 'ml-IN', 'mr-IN', 'gu-IN', 'pa-IN', 'od-IN']
 
 
 class EvidenceResult(BaseModel):

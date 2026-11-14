@@ -304,8 +304,8 @@ def test_audit_actions_privacy_and_payload_allowlist(client, caplog):
         assert canary not in json.dumps(report) + text + caplog.text
     assert '<script>' in text  # inert plain-text export; React must escape this on review.
     audit = events(client, case)
-    assert [e['action'] for e in audit] == ['investigation_created', 'context_updated', 'evidence_submitted', 'evidence_submitted', 'analysis_completed', 'report_generated']
-    assert all(e['created_at'].tzinfo and e['actor'] in ('user', 'system') for e in audit)
+    assert [e['action'] for e in audit] == ['investigation_created', 'context_updated', 'evidence_submitted', 'evidence_submitted', 'action_executed', 'analysis_completed', 'report_generated']
+    assert all(e['created_at'].tzinfo and e['actor'] in ('user', 'system', 'agent') for e in audit)
     raw = json.dumps([e['metadata'] for e in audit])
     for forbidden in ('739182', 'canary-secret', '<script>', 'different.demo@upi', 'confirmed_text', 'filename'):
         assert forbidden not in raw
@@ -385,7 +385,9 @@ def test_report_uses_reviewed_ocr_only(prepared):
         combined = json.dumps(report) + client.get(report_url(case) + '?format=txt').text
         for forbidden in ('739182', 'private-', 'Uncorrected OCR', 'ocr_text', 'metadata'):
             assert forbidden not in combined
-        assert events(client, case)[-3]['action'] == 'evidence_updated'
+        # Unread evidence and no further questions hand the case to a person.
+        assert [e['action'] for e in events(client, case)][-4:] == [
+            'evidence_updated', 'escalation_opened', 'analysis_completed', 'report_generated']
 
 
 def test_phase03_upgrade_backfill_repeatability(prepared):
@@ -397,7 +399,8 @@ def test_phase03_upgrade_backfill_repeatability(prepared):
         facts = conn.execute('SELECT created_at FROM investigations WHERE id=%s', (case['id'],)).fetchone()
         conn.execute('DROP TABLE incident_reports,audit_events')
         conn.execute('ALTER TABLE investigations DROP COLUMN case_status,DROP COLUMN status_revision')
-        conn.execute("DELETE FROM schema_migrations WHERE version='004_reports_and_follow_up.sql'")
+        # The ledger columns belong to the dropped audit table, so that migration is re-applied too.
+        conn.execute("DELETE FROM schema_migrations WHERE version IN ('004_reports_and_follow_up.sql','012_ledger_hash_chain.sql')")
     migrate(prepared); migrate(prepared); seed(prepared); seed(prepared)
     with TestClient(create_app(prepared, worker_enabled=False)) as client:
         client.cookies.set('bytebot_session', cookie)

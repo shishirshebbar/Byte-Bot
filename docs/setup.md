@@ -51,9 +51,11 @@ The API and CLI load the root `.env`; existing shell variables take precedence. 
 | `DATABASE_URL` | No code default; example points to `127.0.0.1:55433/bytebot` | Required demo database connection |
 | `TEST_DATABASE_URL` | No code default; example points to `127.0.0.1:55433/bytebot_test` | Separate database required for integration tests |
 | `COOKIE_SECURE` | `false` | Use `true` when serving through HTTPS; keep false for loopback HTTP |
-| `BYTEBOT_EXTRACTION_MODE` | `gemini` | `fixture` explicitly enables deterministic synthetic extraction |
+| `BYTEBOT_EXTRACTION_MODE` | `gemini` | `sarvam` uses the live Sarvam LLM; `fixture` explicitly enables deterministic synthetic extraction |
 | `GEMINI_API_KEY` | Empty | Optional server-side Gemini credential |
 | `GEMINI_MODEL` | Empty | Optional Gemini model identifier; required with the key for live extraction |
+| `SARVAM_API_KEY` | Empty | Sarvam AI key for voice notes, translation, spoken guidance, and `BYTEBOT_EXTRACTION_MODE=sarvam`; keep it only in `.env` |
+| `SARVAM_CHAT_MODEL` | `sarvam-105b-conversations` | Sarvam chat model used for live extraction |
 | `OCR_MODEL_DIR` | `.cache/easyocr` | OCR cache, resolved relative to the repository root unless absolute |
 | `BYTEBOT_API_TARGET` | `http://127.0.0.1:8000` | Vite development/preview API proxy target; shell variable |
 | `BYTEBOT_WEB_URL` | `http://127.0.0.1:5174` | Browser acceptance target; shell variable |
